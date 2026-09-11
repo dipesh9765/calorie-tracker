@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.sp
 import com.calorietracker.app.data.model.DailySummary
 import com.calorietracker.app.data.model.MealEntry
 import com.calorietracker.app.ui.components.DayDetailsDialog
+import com.calorietracker.app.ui.components.DeleteConfirmationDialog
 import com.calorietracker.app.ui.theme.BackgroundDark
 import com.calorietracker.app.ui.theme.PrimaryBlue
 import com.calorietracker.app.ui.theme.SurfaceDark
@@ -30,6 +31,22 @@ fun LogHistoryScreen(
     onDeleteMeal: (String) -> Unit
 ) {
     var selectedSummaryForDialog by remember { mutableStateOf<DailySummary?>(null) }
+    var mealPendingDelete by remember { mutableStateOf<MealEntry?>(null) }
+
+    // Deletion confirmation dialog
+    mealPendingDelete?.let { meal ->
+        DeleteConfirmationDialog(
+            foodName = meal.foodName,
+            dateIso = meal.dateIso,
+            onConfirm = {
+                onDeleteMeal(meal.id)
+                mealPendingDelete = null
+            },
+            onDismiss = {
+                mealPendingDelete = null
+            }
+        )
+    }
 
     // Day Details Dialog popup
     selectedSummaryForDialog?.let { summary ->
@@ -137,7 +154,7 @@ fun LogHistoryScreen(
                                 fontWeight = FontWeight.Bold
                             )
                             IconButton(
-                                onClick = { onDeleteMeal(meal.id) },
+                                onClick = { mealPendingDelete = meal },
                                 modifier = Modifier.size(32.dp)
                             ) {
                                 Icon(

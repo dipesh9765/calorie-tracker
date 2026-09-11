@@ -21,8 +21,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.filled.DeleteOutline
 import com.calorietracker.app.data.model.MealEntry
 import com.calorietracker.app.data.model.UserProfile
+import com.calorietracker.app.ui.components.DeleteConfirmationDialog
 import com.calorietracker.app.ui.components.LiquidBubbleProgress
 import com.calorietracker.app.ui.components.MacroCard
 import com.calorietracker.app.ui.theme.*
@@ -39,9 +41,26 @@ fun HomeScreen(
     coachAdvice: String,
     isLoadingAi: Boolean,
     onLogMealSubmitted: (String) -> Unit,
-    onToggleCreatine: () -> Unit
+    onToggleCreatine: () -> Unit,
+    onDeleteMeal: (MealEntry) -> Unit
 ) {
     var mealInputText by remember { mutableStateOf("") }
+    var mealPendingDelete by remember { mutableStateOf<MealEntry?>(null) }
+
+    // Deletion confirmation dialog
+    mealPendingDelete?.let { meal ->
+        DeleteConfirmationDialog(
+            foodName = meal.foodName,
+            dateIso = meal.dateIso,
+            onConfirm = {
+                onDeleteMeal(meal)
+                mealPendingDelete = null
+            },
+            onDismiss = {
+                mealPendingDelete = null
+            }
+        )
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -284,12 +303,27 @@ fun HomeScreen(
                                 modifier = Modifier.padding(top = 2.dp)
                             )
                         }
-                        Text(
-                            text = "${meal.calories} kcal",
-                            color = PrimaryBlue,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "${meal.calories} kcal",
+                                color = PrimaryBlue,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            IconButton(
+                                onClick = { mealPendingDelete = meal },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.DeleteOutline,
+                                    contentDescription = "Delete Log",
+                                    tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
                     }
                 }
             }

@@ -252,7 +252,11 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                         },
-                        onToggleCreatine = { creatineTaken = !creatineTaken }
+                        onToggleCreatine = { creatineTaken = !creatineTaken },
+                        onDeleteMeal = { meal ->
+                            allMeals.remove(meal)
+                            Toast.makeText(this@MainActivity, "Deleted log: ${meal.foodName}", Toast.LENGTH_SHORT).show()
+                        }
                     )
                     1 -> AnalyticsScreen(
                         weeklySummaries = weeklySummaries,
