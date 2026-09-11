@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CalorieTracker AI - Sleek Android Preview</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #0B0E17;
+            color: #F1F5F9;
+        }
+        .phone-frame {
+            width: 412px;
+            height: 915px;
+            border-radius: 44px;
+            border: 4px solid #1E293B;
+            box-shadow: 0 30px 70px -15px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.15);
+            background: #0F1424;
+            overflow: hidden;
+            position: relative;
+        }
+        .punch-hole {
+            width: 14px;
+            height: 14px;
+            background-color: #000;
+            border-radius: 50%;
+            margin: 0 auto;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .liquid-container {
+            position: relative;
+            width: 220px;
+            height: 220px;
+            border-radius: 50%;
+            border: 6px solid #5B7FFF;
+            overflow: hidden;
+            background: rgba(30, 41, 59, 0.5);
+            margin: 0 auto;
+        }
+        .liquid-wave {
+            position: absolute;
+            left: 0;
+            bottom: 0;
+            width: 200%;
+            height: 60%;
+            background: rgba(91, 127, 255, 0.35);
+            border-radius: 40%;
+            animation: wave 8s infinite linear;
+        }
+        .liquid-wave:nth-child(2) {
+            bottom: 5%;
+            background: rgba(91, 127, 255, 0.5);
+            border-radius: 35%;
+            animation: wave 6s infinite linear;
+        }
+        @keyframes wave {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .glass-card {
+            background: rgba(34, 43, 69, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4 sm:p-8">
+
+    <!-- Mobile App Simulator Container -->
+    <div class="phone-frame flex flex-col justify-between">
+        
+        <!-- Vivo V50 Status Bar with Centered Punch Hole -->
+        <div class="pt-3 px-6 flex justify-between items-center text-xs text-slate-400 font-semibold select-none">
+            <span>09:41</span>
+            <div class="punch-hole"></div>
+            <div class="flex items-center space-x-2 text-[11px]">
+                <span>5G</span>
+                <span>100%</span>
+            </div>
+        </div>
+
+        <!-- Scrollable Main Content -->
+        <div id="appScreenContainer" class="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-5">
+            
+            <!-- SCREEN 1: TODAY DASHBOARD -->
+            <div id="screenToday" class="space-y-5">
+                <!-- Header -->
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h1 class="text-xl font-bold text-white">Hello, Gym Bro 👋</h1>
+                        <p class="text-xs text-slate-400">Target: 105 kg → 90 kg (2,300 kcal)</p>
+                    </div>
+                    <button id="creatineBtn" onclick="toggleCreatine()" class="px-3 py-1.5 rounded-full text-xs font-semibold flex items-center space-x-1 bg-emerald-500 text-slate-950 transition-all">
+                        <span>✓ Creatine 5g</span>
+                    </button>
+                </div>
+
+                <!-- Circular Liquid Progress Indicator -->
+                <div class="liquid-container flex flex-col items-center justify-center text-center shadow-lg my-2">
+                    <div class="liquid-wave"></div>
+                    <div class="liquid-wave"></div>
+                    <div class="relative z-10">
+                        <span id="caloriesText" class="text-4xl font-extrabold text-white tracking-tight">2,615</span>
+                        <p class="text-xs text-slate-300">of 2,300 kcal</p>
+                        <span id="deficitStatusText" class="text-xs font-bold text-amber-400 mt-1 inline-block">+315 kcal over deficit</span>
+                    </div>
+                </div>
+
+                <!-- Macro Progress Cards -->
+                <div class="grid grid-cols-3 gap-2.5">
+                    <div class="glass-card p-3 rounded-2xl">
+                        <p class="text-xs text-slate-400">Protein</p>
+                        <p id="proteinText" class="text-base font-bold text-white mt-0.5">192g</p>
+                        <div class="w-full bg-slate-700/50 h-1.5 rounded-full mt-2 overflow-hidden">
+                            <div id="proteinBar" class="bg-indigo-500 h-full rounded-full" style="width: 100%;"></div>
+                        </div>
+                        <p class="text-[10px] text-slate-400 mt-1">Goal: 180g</p>
+                    </div>
+
+                    <div class="glass-card p-3 rounded-2xl">
+                        <p class="text-xs text-slate-400">Carbs</p>
+                        <p id="carbsText" class="text-base font-bold text-white mt-0.5">230g</p>
+                        <div class="w-full bg-slate-700/50 h-1.5 rounded-full mt-2 overflow-hidden">
+                            <div class="bg-amber-500 h-full rounded-full" style="width: 95%;"></div>
+                        </div>
+                        <p class="text-[10px] text-slate-400 mt-1">Goal: 240g</p>
+                    </div>
+
+                    <div class="glass-card p-3 rounded-2xl">
+                        <p class="text-xs text-slate-400">Fat</p>
+                        <p id="fatText" class="text-base font-bold text-white mt-0.5">70g</p>
+                        <div class="w-full bg-slate-700/50 h-1.5 rounded-full mt-2 overflow-hidden">
+                            <div class="bg-purple-500 h-full rounded-full" style="width: 100%;"></div>
+                        </div>
+                        <p class="text-[10px] text-slate-400 mt-1">Goal: 65g</p>
+                    </div>
+                </div>
+
+                <!-- AI Coach Tip -->
+                <div class="glass-card p-4 rounded-2xl border-l-4 border-indigo-500">
+                    <div class="flex items-start space-x-3">
+                        <span class="text-lg">💡</span>
+                        <div>
+                            <h4 class="text-xs font-bold text-indigo-400">AI Nutritionist Advice (Nagpur Context)</h4>
+                            <p id="coachAdviceText" class="text-xs text-slate-300 mt-1">Awesome job hitting 192g protein today! You exceeded your 180g target with Nakpro Whey & Chicken Curry while keeping close to your maintenance budget.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Meal Input Logger -->
+                <div class="space-y-2">
+                    <label class="text-xs font-bold text-slate-300">Log What You Ate (Natural Language)</label>
+                    <div class="flex space-x-2">
+                        <input id="mealInput" type="text" placeholder="e.g. 2 rotis with 200g chicken dry & 1 scoop whey" class="flex-1 bg-slate-900 border border-slate-700/80 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+                        <button onclick="submitMealLog()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-colors flex items-center">
+                            <span>Log</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Today's Logged Items -->
+                <div class="space-y-2.5">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Today's Meals</h3>
+                    <div id="todayMealList" class="space-y-2">
+                        <!-- Filled by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- SCREEN 2: ANALYTICS -->
+            <div id="screenAnalytics" class="space-y-4 hidden">
+                <h2 class="text-lg font-bold text-white">Intake Analytics</h2>
+                <p class="text-xs text-slate-400">Weekly calories vs 2,300 kcal target deficit</p>
+
+                <div class="glass-card p-4 rounded-2xl">
+                    <canvas id="weeklyChartCanvas" height="180"></canvas>
+                </div>
+
+                <div class="glass-card p-4 rounded-2xl space-y-2">
+                    <div class="flex justify-between text-xs">
+                        <span class="text-slate-400">Target Deficit</span>
+                        <span class="font-bold text-emerald-400">2,300 kcal/day</span>
+                    </div>
+                    <div class="flex justify-between text-xs">
+                        <span class="text-slate-400">TDEE Maintenance</span>
+                        <span class="font-bold text-amber-400">2,900 kcal/day</span>
+                    </div>
+                    <div class="flex justify-between text-xs">
+                        <span class="text-slate-400">Weekly Avg Protein</span>
+                        <span class="font-bold text-indigo-400">151.1g / day</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SCREEN 3: HISTORY LOGS -->
+            <div id="screenLogs" class="space-y-3 hidden">
+                <h2 class="text-lg font-bold text-white">Meal History Logs</h2>
+                <p class="text-xs text-slate-400">Stored locally on phone (JSON exportable)</p>
+                <div id="historyLogsList" class="space-y-2">
+                    <!-- Filled by JS -->
+                </div>
+            </div>
+
+            <!-- SCREEN 4: PROFILE & SETTINGS -->
+            <div id="screenProfile" class="space-y-4 hidden">
+                <h2 class="text-lg font-bold text-white">Profile & AI Keys</h2>
+
+                <div class="glass-card p-4 rounded-2xl space-y-2">
+                    <h3 class="text-xs font-bold text-indigo-400 uppercase">Calculated Body Metrics</h3>
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                        <div><span class="text-slate-400">Height:</span> <span class="text-white font-semibold">188 cm</span></div>
+                        <div><span class="text-slate-400">Age/Sex:</span> <span class="text-white font-semibold">25, Male</span></div>
+                        <div><span class="text-slate-400">Weight:</span> <span class="text-white font-semibold">105 kg → 90 kg</span></div>
+                        <div><span class="text-slate-400">BMR:</span> <span class="text-white font-semibold">2,105 kcal</span></div>
+                        <div><span class="text-slate-400">TDEE:</span> <span class="text-white font-semibold">2,900 kcal</span></div>
+                        <div><span class="text-slate-400">Deficit Goal:</span> <span class="text-emerald-400 font-bold">2,300 kcal</span></div>
+                    </div>
+                </div>
+
+                <div class="glass-card p-4 rounded-2xl space-y-3">
+                    <h3 class="text-xs font-bold text-amber-400 uppercase">AI Handshake Configuration</h3>
+                    <div>
+                        <label class="text-xs text-slate-300">Active AI Provider</label>
+                        <select id="aiProviderSelect" class="w-full bg-slate-900 border border-slate-700 text-xs text-white rounded-xl p-2.5 mt-1 focus:outline-none">
+                            <option value="Gemini">Google Gemini (Recommended)</option>
+                            <option value="OpenAI">OpenAI GPT-4o-mini</option>
+                            <option value="Claude">Anthropic Claude 3.5</option>
+                            <option value="DeepSeek">DeepSeek AI</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-300">API Key</label>
+                        <input id="apiKeyInput" type="password" placeholder="Paste your API key here" class="w-full bg-slate-900 border border-slate-700 text-xs text-white rounded-xl p-2.5 mt-1 focus:outline-none">
+                    </div>
+                    <button onclick="saveProfileSettings()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold py-2.5 rounded-xl transition-colors">Save Keys</button>
+                </div>
+
+                <div class="glass-card p-4 rounded-2xl space-y-2">
+                    <h3 class="text-xs font-bold text-emerald-400 uppercase">Export Data</h3>
+                    <div class="flex space-x-2 pt-1">
+                        <button onclick="exportData('json')" class="flex-1 bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold py-2 rounded-xl border border-slate-700">Export JSON</button>
+                        <button onclick="exportData('csv')" class="flex-1 bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold py-2 rounded-xl border border-slate-700">Export CSV</button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Bottom Navigation Bar -->
+        <div class="bg-slate-900 border-t border-slate-800 px-4 py-3 flex justify-around items-center text-xs select-none">
+            <button onclick="switchTab('screenToday')" class="nav-item flex flex-col items-center space-y-1 text-indigo-400">
+                <span>🏠</span>
+                <span class="font-medium text-[10px]">Today</span>
+            </button>
+            <button onclick="switchTab('screenAnalytics')" class="nav-item flex flex-col items-center space-y-1 text-slate-500 hover:text-white">
+                <span>📊</span>
+                <span class="font-medium text-[10px]">Analytics</span>
+            </button>
+            <button onclick="switchTab('screenLogs')" class="nav-item flex flex-col items-center space-y-1 text-slate-500 hover:text-white">
+                <span>📜</span>
+                <span class="font-medium text-[10px]">Logs</span>
+            </button>
+            <button onclick="switchTab('screenProfile')" class="nav-item flex flex-col items-center space-y-1 text-slate-500 hover:text-white">
+                <span>⚙️</span>
+                <span class="font-medium text-[10px]">Profile</span>
+            </button>
+        </div>
+
+    </div>
+
+    <!-- JavaScript Application State & Logic -->
+    <script>
+        const mealHistory = [
+            { id: '1', date: '2026-09-07', food: 'Haldiram Bread, Saoji Gravy, Eggs, Tarri Poha', portion: 'Daily total', cal: 1685, p: 110.5, c: 175, f: 48 },
+            { id: '2', date: '2026-09-08', food: 'Rotis, Chicken Dry/Curry, Nakpro Whey, Sabudana Khichdi', portion: 'Daily total', cal: 2302, p: 154.5, c: 220, f: 62 },
+            { id: '3', date: '2026-09-09', food: '3 Rotis, Dahi Samosa, 200g Chicken, Nakpro Whey', portion: 'Daily total', cal: 1945, p: 147.5, c: 195, f: 55 },
+            { id: '4', date: '2026-09-10', food: '3 Rotis, Chicken Curry, 2 scoops Nakpro Whey, Eggs', portion: 'Daily total', cal: 2615, p: 192.0, c: 230, f: 70 }
+        ];
+
+        let creatineTaken = true;
+
+        function renderMeals() {
+            const listEl = document.getElementById('todayMealList');
+            const historyEl = document.getElementById('historyLogsList');
+            listEl.innerHTML = '';
+            historyEl.innerHTML = '';
+
+            mealHistory.forEach((m) => {
+                const card = `
+                    <div class="glass-card p-3 rounded-xl flex justify-between items-center">
+                        <div>
+                            <p class="text-xs font-bold text-white">${m.food}</p>
+                            <p class="text-[10px] text-slate-400">${m.date} • ${m.p}g Protein</p>
+                        </div>
+                        <span class="text-xs font-extrabold text-indigo-400">${m.cal} kcal</span>
+                    </div>
+                `;
+                if (m.date === '2026-09-10') {
+                    listEl.innerHTML += card;
+                }
+                historyEl.innerHTML += card;
+            });
+        }
+
+        function submitMealLog() {
+            const input = document.getElementById('mealInput').value;
+            if (!input.trim()) return;
+
+            // Simulated AI parsing logic for Indian food
+            const newMeal = {
+                id: Date.now().toString(),
+                date: '2026-09-10',
+                food: input,
+                portion: 'AI Estimated',
+                cal: 420,
+                p: 32,
+                c: 40,
+                f: 12
+            };
+
+            mealHistory.unshift(newMeal);
+            document.getElementById('mealInput').value = '';
+            renderMeals();
+            alert('Logged meal with AI parsing: ' + input);
+        }
+
+        function toggleCreatine() {
+            creatineTaken = !creatineTaken;
+            const btn = document.getElementById('creatineBtn');
+            btn.innerHTML = creatineTaken ? '<span>✓ Creatine 5g</span>' : '<span>+ 5g Creatine</span>';
+            btn.className = creatineTaken 
+                ? 'px-3 py-1.5 rounded-full text-xs font-semibold flex items-center space-x-1 bg-emerald-500 text-slate-950 transition-all'
+                : 'px-3 py-1.5 rounded-full text-xs font-semibold flex items-center space-x-1 bg-slate-800 text-white transition-all';
+        }
+
+        function switchTab(screenId) {
+            ['screenToday', 'screenAnalytics', 'screenLogs', 'screenProfile'].forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+            document.getElementById(screenId).classList.remove('hidden');
+
+            if (screenId === 'screenAnalytics') {
+                initChart();
+            }
+        }
+
+        function exportData(type) {
+            const dataStr = type === 'json' ? JSON.stringify(mealHistory, null, 2) : "Date,Food,Calories,Protein\n" + mealHistory.map(m => `${m.date},"${m.food}",${m.cal},${m.p}`).join("\n");
+            const blob = new Blob([dataStr], { type: type === 'json' ? 'application/json' : 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `CalorieTracker_Export.${type}`;
+            a.click();
+        }
+
+        function saveProfileSettings() {
+            alert('AI Key Configuration Saved!');
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('weeklyChartCanvas').getContext('2d');
+            if (window.myChart) window.myChart.destroy();
+            window.myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Sept 7', 'Sept 8', 'Sept 9', 'Sept 10'],
+                    datasets: [
+                        {
+                            label: 'Intake (kcal)',
+                            data: [1685, 2302, 1945, 2615],
+                            backgroundColor: '#5B7FFF',
+                            borderRadius: 6
+                        },
+                        {
+                            label: 'Target (2,300)',
+                            data: [2300, 2300, 2300, 2300],
+                            type: 'line',
+                            borderColor: '#10B981',
+                            borderWidth: 2,
+                            pointRadius: 0
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94A3B8', font: { size: 10 } } },
+                        x: { grid: { display: false }, ticks: { color: '#94A3B8', font: { size: 10 } } }
+                    }
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', renderMeals);
+    </script>
+</body>
+</html>
