@@ -1,10 +1,15 @@
-name: Android Production CI/CD Pipeline
+name: Android Production CI/CD & GitHub Release Pipeline
 
 on:
   push:
     branches: [ "main" ]
+    tags:
+      - 'v*'
   pull_request:
     branches: [ "main" ]
+
+permissions:
+  contents: write
 
 jobs:
   build-and-test:
@@ -27,11 +32,40 @@ jobs:
     - name: Run Automated Unit Test Suite
       run: gradle test --no-daemon
 
-    - name: Build Debug APK
-      run: gradle assembleDebug --no-daemon
+    - name: Build Debug & Release APKs
+      run: gradle assembleDebug assembleRelease --no-daemon
 
     - name: Upload Debug APK Artifact
       uses: actions/upload-artifact@v4
       with:
         name: app-debug-apk
         path: app/build/outputs/apk/debug/app-debug.apk
+
+    - name: Upload Release APK Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-release-apk
+        path: app/build/outputs/apk/release/app-release.apk
+
+    - name: Publish GitHub Release with APK Downloads
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: v1.0.0
+        name: "CalorieTracker AI Production Release v1.0.0"
+        body: |
+          🚀 **CalorieTracker AI v1.0.0 Production Release**
+          
+          - 🧠 **Multi-LLM AI Engine**: Native support for Gemini, OpenAI GPT-4o, Anthropic Claude 3.5, and DeepSeek.
+          - 🔔 **2-Hour Intelligent Push Notifications**: Background WorkManager engine giving real-time nutrition coaching tailored to Dipesh.
+          - 💾 **Offline-First Persistence**: Room SQLite database with full CRUD & SharedPreferences profile storage.
+          - ↩️ **Undo Deletion Snackbar**: Instant restore loop for deleted logs.
+          
+          ### Direct Downloads:
+          - 📦 [app-release.apk](https://github.com/dipesh9765/calorie-tracker/releases/download/v1.0.0/app-release.apk)
+          - 📦 [app-debug.apk](https://github.com/dipesh9765/calorie-tracker/releases/download/v1.0.0/app-debug.apk)
+        files: |
+          app/build/outputs/apk/release/app-release.apk
+          app/build/outputs/apk/debug/app-debug.apk
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
