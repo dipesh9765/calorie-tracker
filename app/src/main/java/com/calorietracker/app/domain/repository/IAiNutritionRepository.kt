@@ -8,6 +8,8 @@ interface IAiNutritionRepository {
         mealText: String,
         provider: AiProviderType,
         apiKey: String,
-        modelName: String = ""
+        modelName: String = "",
+        todayContext: String = "",
+        yesterdayContext: String = ""
     ): Result<Pair<Meal, String>>
 }

@@ -21,10 +21,19 @@ class AiRepository(
         inputText: String,
         provider: String,
         apiKey: String,
-        modelName: String = ""
+        modelName: String = "",
+        todayContext: String = "",
+        yesterdayContext: String = ""
     ): Result<MealParseResult> = withContext(Dispatchers.IO) {
         val providerType = AiProviderType.fromString(provider)
-        val result = aiNutritionRepository.parseMealText(inputText, providerType, apiKey, modelName)
+        val result = aiNutritionRepository.parseMealText(
+            mealText = inputText,
+            provider = providerType,
+            apiKey = apiKey,
+            modelName = modelName,
+            todayContext = todayContext,
+            yesterdayContext = yesterdayContext
+        )
 
         result.fold(
             onSuccess = { (meal, coachAdvice) ->

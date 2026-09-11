@@ -250,11 +250,31 @@ class MainActivity : ComponentActivity() {
                                     else -> userProfile.geminiModel
                                 }.trim()
 
+                                val yesterdayIso = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(
+                                    java.util.Calendar.getInstance().apply { add(java.util.Calendar.DAY_OF_YEAR, -1) }.time
+                                )
+                                val yesterdayMeals = allMeals.filter { it.dateIso == yesterdayIso }
+                                val yesterdaySummaryText = if (yesterdayMeals.isNotEmpty()) {
+                                    "Total: ${yesterdayMeals.sumOf { it.calories }} kcal, ${yesterdayMeals.sumOf { it.proteinGrams.toDouble() }}g Protein, ${yesterdayMeals.sumOf { it.carbsGrams.toDouble() }}g Carbs, ${yesterdayMeals.sumOf { it.fatGrams.toDouble() }}g Fat. Foods logged: " +
+                                    yesterdayMeals.joinToString("; ") { "${it.foodName} (${it.calories} kcal, ${it.proteinGrams}g Protein)" }
+                                } else {
+                                    "No meals logged for yesterday."
+                                }
+
+                                val todaySummaryText = if (todayMeals.isNotEmpty()) {
+                                    "Current Total: $todayTotalCalories kcal, ${todayTotalProtein}g Protein, ${todayTotalCarbs}g Carbs, ${todayTotalFat}g Fat. Foods logged: " +
+                                    todayMeals.joinToString("; ") { "${it.foodName} (${it.calories} kcal, ${it.proteinGrams}g Protein)" }
+                                } else {
+                                    "No meals logged yet today."
+                                }
+
                                 val result = aiRepository.parseMealText(
                                     inputText = input,
                                     provider = userProfile.primaryAiProvider,
                                     apiKey = apiKey,
-                                    modelName = modelName
+                                    modelName = modelName,
+                                    todayContext = todaySummaryText,
+                                    yesterdayContext = yesterdaySummaryText
                                 )
 
                                 isLoadingAi = false

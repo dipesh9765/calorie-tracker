@@ -31,7 +31,9 @@ class AiNutritionRepositoryImpl(
         mealText: String,
         provider: AiProviderType,
         apiKey: String,
-        modelName: String
+        modelName: String,
+        todayContext: String,
+        yesterdayContext: String
     ): Result<Pair<Meal, String>> = withContext(Dispatchers.IO) {
         try {
             val cleanKey = apiKey.trim()
@@ -53,6 +55,13 @@ class AiNutritionRepositoryImpl(
                 Current System Context:
                 - Today's Date: $todayIso ($dayOfWeek)
                 - Yesterday's Date: $yesterdayIso
+                ${if (yesterdayContext.isNotBlank()) "- Yesterday's ($yesterdayIso) Consumption Log & Totals:\n  $yesterdayContext" else ""}
+                ${if (todayContext.isNotBlank()) "- Today's ($todayIso) Current Consumption Log & Totals:\n  $todayContext" else ""}
+
+                Multi-Day AI Coaching Advice Rules for "advice":
+                - Always evaluate the combined multi-day context of yesterday's consumption AND today's current totals against the user's daily targets (180g Protein, 2,300 kcal deficit).
+                - Compare today's protein/calorie trajectory against yesterday. For example, if yesterday had high protein and today is lagging, acknowledge yesterday's solid intake and recommend specific food items (e.g., Nakpro Whey, 150g chicken breast, eggs) to bridge today's remaining gap.
+                - Keep advice highly encouraging, actionable, concise, and grounded in Indian meal options.
                 
                 Date & Action Parsing Rules:
                 - Analyze user input for relative date references (e.g. "yesterday", "last night", "2 days ago", "on Sept 8").
