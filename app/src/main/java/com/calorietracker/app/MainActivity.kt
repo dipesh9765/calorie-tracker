@@ -33,14 +33,18 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+import com.calorietracker.app.data.repository.PreferencesRepository
+
 class MainActivity : ComponentActivity() {
 
     private val aiRepository = AiRepository()
     private lateinit var dataExporter: DataExporter
+    private lateinit var preferencesRepository: PreferencesRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         dataExporter = DataExporter(this)
+        preferencesRepository = PreferencesRepository(this)
 
         setContent {
             CalorieTrackerTheme {
@@ -52,8 +56,10 @@ class MainActivity : ComponentActivity() {
     @Composable
     fun MainAppContainer() {
         var selectedScreenIndex by remember { mutableIntStateOf(0) }
-        var userProfile by remember { mutableStateOf(UserProfile()) }
-        
+        var userProfile by remember { mutableStateOf(preferencesRepository.getUserProfile()) }
+        val snackbarHostState = remember { SnackbarHostState() }
+        val scope = rememberCoroutineScope()
+
         // Pre-seeded chat logs from Sept 7 to Sept 10
         val allMeals = remember {
             mutableStateListOf(
@@ -100,6 +106,24 @@ class MainActivity : ComponentActivity() {
             )
         }
 
+        fun deleteMealWithUndo(meal: MealEntry) {
+            val removedIndex = allMeals.indexOfFirst { it.id == meal.id }
+            if (removedIndex != -1) {
+                val removedMeal = allMeals.removeAt(removedIndex)
+                scope.launch {
+                    val result = snackbarHostState.showSnackbar(
+                        message = "Deleted: ${removedMeal.foodName}",
+                        actionLabel = "UNDO",
+                        duration = SnackbarDuration.Short
+                    )
+                    if (result == SnackbarResult.ActionPerformed) {
+                        val restoreIndex = removedIndex.coerceIn(0, allMeals.size)
+                        allMeals.add(restoreIndex, removedMeal)
+                    }
+                }
+            }
+        }
+
         val todayIso = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
         val todayMeals = allMeals.filter { it.dateIso == todayIso }
 
@@ -131,6 +155,7 @@ class MainActivity : ComponentActivity() {
         }
 
         Scaffold(
+            snackbarHost = { SnackbarHost(snackbarHostState) },
             bottomBar = {
                 NavigationBar(
                     containerColor = SurfaceDark,
@@ -253,10 +278,7 @@ class MainActivity : ComponentActivity() {
                             }
                         },
                         onToggleCreatine = { creatineTaken = !creatineTaken },
-                        onDeleteMeal = { meal ->
-                            allMeals.remove(meal)
-                            Toast.makeText(this@MainActivity, "Deleted log: ${meal.foodName}", Toast.LENGTH_SHORT).show()
-                        }
+                        onDeleteMeal = { meal -> deleteMealWithUndo(meal) }
                     )
                     1 -> AnalyticsScreen(
                         weeklySummaries = weeklySummaries,
@@ -266,12 +288,18 @@ class MainActivity : ComponentActivity() {
                     )
                     2 -> LogHistoryScreen(
                         allMeals = allMeals,
-                        onDeleteMeal = { id -> allMeals.removeAll { it.id == id } }
+                        onDeleteMeal = { id ->
+                            val target = allMeals.find { it.id == id }
+                            if (target != null) {
+                                deleteMealWithUndo(target)
+                            }
+                        }
                     )
                     3 -> ProfileScreen(
                         userProfile = userProfile,
                         onSaveProfile = { updated ->
                             userProfile = updated
+                            preferencesRepository.saveUserProfile(updated)
                             Toast.makeText(this@MainActivity, "Profile and API Keys updated!", Toast.LENGTH_SHORT).show()
                         },
                         onExportJson = {
