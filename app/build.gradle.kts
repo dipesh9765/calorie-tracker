@@ -21,24 +21,31 @@ android {
         }
     }
 
+    val keystoreFile = file("${rootDir}/release-key.jks")
     signingConfigs {
-        create("release") {
-            storeFile = file("${rootDir}/release-key.jks")
-            storePassword = "CalorieTracker123"
-            keyAlias = "calorietracker"
-            keyPassword = "CalorieTracker123"
-            enableV1Signing = true
-            enableV2Signing = true
+        if (keystoreFile.exists()) {
+            create("release") {
+                storeFile = keystoreFile
+                storePassword = "CalorieTracker123"
+                keyAlias = "calorietracker"
+                keyPassword = "CalorieTracker123"
+                enableV1Signing = true
+                enableV2Signing = true
+            }
         }
     }
 
     buildTypes {
         debug {
-            signingConfig = signingConfigs.getByName("release")
+            if (keystoreFile.exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("release")
+            if (keystoreFile.exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
