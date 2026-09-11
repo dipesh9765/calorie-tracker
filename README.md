@@ -4,6 +4,17 @@ An enterprise-grade Android application built with **Kotlin**, **Jetpack Compose
 
 ---
 
+## 📥 Download APK
+
+| Package | Direct Download Link | Description |
+| :--- | :--- | :--- |
+| **Release APK** | [**Download app-release.apk**](https://github.com/dipesh9765/calorie-tracker/releases/latest/download/app-release.apk) | Production signed APK (~10.9 MB) |
+| **Debug APK** | [**Download app-debug.apk**](https://github.com/dipesh9765/calorie-tracker/releases/latest/download/app-debug.apk) | Development debug build (~16.6 MB) |
+
+> 📌 **Note**: You can also download the latest APK directly from the [**GitHub Releases Page**](https://github.com/dipesh9765/calorie-tracker/releases).
+
+---
+
 ## ✨ Features
 
 - 🤖 **Multi-LLM AI Engine**:
