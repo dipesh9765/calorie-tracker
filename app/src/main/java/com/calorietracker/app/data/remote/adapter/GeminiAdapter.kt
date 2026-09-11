@@ -19,7 +19,11 @@ import okhttp3.RequestBody.Companion.toRequestBody
  * - Uses `gemini-3.6-flash` (latest recommended Gemini model) with `gemini-3.5-flash` fallback.
  */
 class GeminiAdapter(
-    private val client: OkHttpClient = OkHttpClient(),
+    private val client: OkHttpClient = OkHttpClient.Builder()
+        .connectTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+        .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+        .writeTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+        .build(),
     private val gson: Gson = Gson()
 ) : IAiProviderAdapter {
 
@@ -33,14 +37,36 @@ class GeminiAdapter(
         val primaryUrl = "https://generativelanguage.googleapis.com/v1beta/models/$selectedModel:generateContent?key=$cleanKey"
         val fallbackUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=$cleanKey"
 
+        // Construct native Gemini JSON schema definition
+        val schemaObject = JsonObject().apply {
+            addProperty("type", "OBJECT")
+            add("properties", JsonObject().apply {
+                add("action", JsonObject().apply { addProperty("type", "STRING") })
+                add("targetDateIso", JsonObject().apply { addProperty("type", "STRING") })
+                add("foodName", JsonObject().apply { addProperty("type", "STRING") })
+                add("portionDescription", JsonObject().apply { addProperty("type", "STRING") })
+                add("calories", JsonObject().apply { addProperty("type", "INTEGER") })
+                add("proteinGrams", JsonObject().apply { addProperty("type", "NUMBER") })
+                add("carbsGrams", JsonObject().apply { addProperty("type", "NUMBER") })
+                add("fatGrams", JsonObject().apply { addProperty("type", "NUMBER") })
+                add("mealCategory", JsonObject().apply { addProperty("type", "STRING") })
+                add("advice", JsonObject().apply { addProperty("type", "STRING") })
+            })
+            add("required", gson.toJsonTree(listOf(
+                "action", "targetDateIso", "foodName", "portionDescription",
+                "calories", "proteinGrams", "carbsGrams", "fatGrams", "mealCategory", "advice"
+            )))
+        }
+
         val payload = JsonObject().apply {
-            // System instruction + content payload
+            // System instruction + user text content payload
             add("contents", gson.toJsonTree(listOf(
                 mapOf("parts" to listOf(mapOf("text" to "$systemInstruction\n\nUser Ate: $inputText")))
             )))
-            // Force strict JSON output schema from Gemini
+            // Force strict JSON output & schema enforcement natively in Gemini engine
             add("generationConfig", JsonObject().apply {
                 addProperty("responseMimeType", "application/json")
+                add("responseSchema", schemaObject)
             })
         }
 

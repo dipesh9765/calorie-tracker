@@ -102,15 +102,15 @@ class AiNutritionRepositoryImpl(
             val jsonString = extractJsonString(rawResponse)
             val jsonObject = gson.fromJson(jsonString, JsonObject::class.java)
 
-            val foodName = jsonObject.get("foodName")?.asString ?: mealText
-            val portionDescription = jsonObject.get("portionDescription")?.asString ?: "Estimated portion"
-            val calories = jsonObject.get("calories")?.asInt ?: 0
-            val proteinGrams = jsonObject.get("proteinGrams")?.asFloat ?: 0f
-            val carbsGrams = jsonObject.get("carbsGrams")?.asFloat ?: 0f
-            val fatGrams = jsonObject.get("fatGrams")?.asFloat ?: 0f
-            val mealCategory = jsonObject.get("mealCategory")?.asString ?: "Meal"
-            val targetDateIso = jsonObject.get("targetDateIso")?.asString ?: todayIso
-            val advice = jsonObject.get("advice")?.asString ?: "Keep hitting your 180g protein target!"
+            val foodName = jsonObject.get("foodName")?.asStringSafely() ?: mealText
+            val portionDescription = jsonObject.get("portionDescription")?.asStringSafely() ?: "Estimated portion"
+            val calories = jsonObject.get("calories")?.asIntSafely() ?: 0
+            val proteinGrams = jsonObject.get("proteinGrams")?.asFloatSafely() ?: 0f
+            val carbsGrams = jsonObject.get("carbsGrams")?.asFloatSafely() ?: 0f
+            val fatGrams = jsonObject.get("fatGrams")?.asFloatSafely() ?: 0f
+            val mealCategory = jsonObject.get("mealCategory")?.asStringSafely() ?: "Meal"
+            val targetDateIso = jsonObject.get("targetDateIso")?.asStringSafely() ?: todayIso
+            val advice = jsonObject.get("advice")?.asStringSafely() ?: "Keep hitting your daily protein target!"
 
             val meal = Meal(
                 foodName = foodName,
@@ -125,7 +125,14 @@ class AiNutritionRepositoryImpl(
 
             Result.success(Pair(meal, advice))
         } catch (e: Exception) {
-            Result.failure(e)
+            val userFriendlyError = when {
+                e is java.net.SocketTimeoutException || e.message?.contains("timeout", ignoreCase = true) == true ->
+                    Exception("Network request timed out while contacting ${provider.displayName}. Please check your connection and retry.")
+                e is java.net.UnknownHostException ->
+                    Exception("No internet connection available. Please check your network and retry.")
+                else -> e
+            }
+            Result.failure(userFriendlyError)
         }
     }
 
@@ -144,3 +151,34 @@ class AiNutritionRepositoryImpl(
             .trim()
     }
 }
+
+private fun com.google.gson.JsonElement.asStringSafely(): String {
+    return try {
+        if (this.isJsonPrimitive) this.asString else this.toString()
+    } catch (_: Exception) {
+        this.toString()
+    }
+}
+
+private fun com.google.gson.JsonElement.asIntSafely(): Int {
+    return try {
+        if (this.isJsonPrimitive) {
+            val prim = this.asJsonPrimitive
+            if (prim.isNumber) prim.asInt else prim.asString.toDoubleOrNull()?.toInt() ?: 0
+        } else 0
+    } catch (_: Exception) {
+        0
+    }
+}
+
+private fun com.google.gson.JsonElement.asFloatSafely(): Float {
+    return try {
+        if (this.isJsonPrimitive) {
+            val prim = this.asJsonPrimitive
+            if (prim.isNumber) prim.asFloat else prim.asString.toFloatOrNull() ?: 0f
+        } else 0f
+    } catch (_: Exception) {
+        0f
+    }
+}
+

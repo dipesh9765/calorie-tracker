@@ -13,7 +13,11 @@ import okhttp3.RequestBody.Companion.toRequestBody
  * Concrete adapter implementation for DeepSeek API (`deepseek-chat`).
  */
 class DeepSeekAdapter(
-    private val client: OkHttpClient = OkHttpClient(),
+    private val client: OkHttpClient = OkHttpClient.Builder()
+        .connectTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+        .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+        .writeTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+        .build(),
     private val gson: Gson = Gson()
 ) : IAiProviderAdapter {
 

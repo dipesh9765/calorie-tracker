@@ -13,7 +13,11 @@ import okhttp3.RequestBody.Companion.toRequestBody
  * Concrete adapter implementation for OpenAI Chat Completions API (`gpt-4o-mini`).
  */
 class OpenAiAdapter(
-    private val client: OkHttpClient = OkHttpClient(),
+    private val client: OkHttpClient = OkHttpClient.Builder()
+        .connectTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+        .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+        .writeTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+        .build(),
     private val gson: Gson = Gson()
 ) : IAiProviderAdapter {
 
@@ -25,9 +29,39 @@ class OpenAiAdapter(
 
         val selectedModel = modelName.trim().ifBlank { "gpt-4o-mini" }
         val url = "https://api.openai.com/v1/chat/completions"
+
+        // Build strict JSON schema format for OpenAI
+        val jsonSchemaFormat = JsonObject().apply {
+            addProperty("type", "json_schema")
+            add("json_schema", JsonObject().apply {
+                addProperty("name", "meal_response")
+                addProperty("strict", true)
+                add("schema", JsonObject().apply {
+                    addProperty("type", "object")
+                    add("properties", JsonObject().apply {
+                        add("action", JsonObject().apply { addProperty("type", "string") })
+                        add("targetDateIso", JsonObject().apply { addProperty("type", "string") })
+                        add("foodName", JsonObject().apply { addProperty("type", "string") })
+                        add("portionDescription", JsonObject().apply { addProperty("type", "string") })
+                        add("calories", JsonObject().apply { addProperty("type", "integer") })
+                        add("proteinGrams", JsonObject().apply { addProperty("type", "number") })
+                        add("carbsGrams", JsonObject().apply { addProperty("type", "number") })
+                        add("fatGrams", JsonObject().apply { addProperty("type", "number") })
+                        add("mealCategory", JsonObject().apply { addProperty("type", "string") })
+                        add("advice", JsonObject().apply { addProperty("type", "string") })
+                    })
+                    add("required", gson.toJsonTree(listOf(
+                        "action", "targetDateIso", "foodName", "portionDescription",
+                        "calories", "proteinGrams", "carbsGrams", "fatGrams", "mealCategory", "advice"
+                    )))
+                    addProperty("additionalProperties", false)
+                })
+            })
+        }
+
         val payload = JsonObject().apply {
             addProperty("model", selectedModel)
-            add("response_format", JsonObject().apply { addProperty("type", "json_object") })
+            add("response_format", jsonSchemaFormat)
             add("messages", gson.toJsonTree(listOf(
                 mapOf("role" to "system", "content" to systemInstruction),
                 mapOf("role" to "user", "content" to "Log this meal: $inputText")
