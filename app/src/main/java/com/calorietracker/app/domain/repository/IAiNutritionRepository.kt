@@ -12,4 +12,15 @@ interface IAiNutritionRepository {
         todayContext: String = "",
         yesterdayContext: String = ""
     ): Result<Pair<Meal, String>>
+
+    suspend fun generateNotificationAdvice(
+        provider: AiProviderType,
+        apiKey: String,
+        modelName: String = "",
+        userName: String,
+        todayContext: String = "",
+        yesterdayContext: String = "",
+        targetCalories: Int,
+        targetProtein: Float
+    ): Result<String>
 }
