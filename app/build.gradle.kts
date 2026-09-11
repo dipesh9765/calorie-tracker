@@ -84,6 +84,9 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
 
+    // WorkManager Background Tasks
+    implementation(libs.androidx.work.runtime)
+
     // Networking
     implementation(libs.okhttp)
     implementation(libs.gson)

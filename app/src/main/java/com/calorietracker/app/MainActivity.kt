@@ -35,6 +35,15 @@ import java.util.Locale
 
 import com.calorietracker.app.data.repository.PreferencesRepository
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import com.calorietracker.app.notification.NotificationHelper
+import com.calorietracker.app.notification.NotificationScheduler
+
 class MainActivity : ComponentActivity() {
 
     private val aiRepository = AiRepository()
@@ -45,6 +54,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         dataExporter = DataExporter(this)
         preferencesRepository = PreferencesRepository(this)
+
+        NotificationHelper.createNotificationChannel(this)
+        NotificationScheduler.schedulePeriodicCoachNotifications(this)
 
         setContent {
             CalorieTrackerTheme {
@@ -59,6 +71,23 @@ class MainActivity : ComponentActivity() {
         var userProfile by remember { mutableStateOf(preferencesRepository.getUserProfile()) }
         val snackbarHostState = remember { SnackbarHostState() }
         val scope = rememberCoroutineScope()
+
+        // Notification Permission Request for Android 13+
+        val permissionLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.RequestPermission()
+        ) { _ -> }
+
+        LaunchedEffect(Unit) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                if (ContextCompat.checkSelfPermission(
+                        this@MainActivity,
+                        Manifest.permission.POST_NOTIFICATIONS
+                    ) != PackageManager.PERMISSION_GRANTED
+                ) {
+                    permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+            }
+        }
 
         // Pre-seeded chat logs from Sept 7 to Sept 10
         val allMeals = remember {

@@ -1,7 +1,7 @@
 package com.calorietracker.app.data.model
 
 data class UserProfile(
-    val name: String = "User",
+    val name: String = "Dipesh",
     val age: Int = 25,
     val gender: String = "Male",
     val heightCm: Float = 188f,
@@ -17,6 +17,7 @@ data class UserProfile(
     val openAiModel: String = "gpt-4o-mini",
     val claudeModel: String = "claude-3-5-sonnet-20240620",
     val deepSeekModel: String = "deepseek-chat",
+    val notificationsEnabled: Boolean = true,
     
     // Auto-calculated nutrition goals
     val bmrCalories: Int = 2105,
