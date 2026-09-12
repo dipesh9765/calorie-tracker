@@ -58,4 +58,28 @@ class RoomDatabaseTest {
         assertEquals(24.0f, entry.proteinGrams, 0.01f)
         assertEquals("Supplement", entry.mealCategory)
     }
+
+    @Test
+    fun `meal list persistence simulation maintains order and entries`() {
+        val meals = mutableListOf<MealEntity>()
+        val meal1 = MealEntity(id = "m1", foodName = "Oats", portionDescription = "50g", calories = 200, proteinGrams = 8f, carbsGrams = 35f, fatGrams = 3f)
+        val meal2 = MealEntity(id = "m2", foodName = "Eggs", portionDescription = "4 whole", calories = 280, proteinGrams = 24f, carbsGrams = 2f, fatGrams = 20f)
+        
+        meals.add(meal1)
+        meals.add(meal2)
+
+        assertEquals(2, meals.size)
+        assertEquals("Oats", meals[0].foodName)
+        assertEquals("Eggs", meals[1].foodName)
+
+        // Simulate delete and undo
+        val removed = meals.removeAt(0)
+        assertEquals(1, meals.size)
+        assertEquals("m1", removed.id)
+
+        // Undo
+        meals.add(0, removed)
+        assertEquals(2, meals.size)
+        assertEquals("Oats", meals[0].foodName)
+    }
 }

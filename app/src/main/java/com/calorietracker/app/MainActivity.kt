@@ -44,16 +44,29 @@ import androidx.core.content.ContextCompat
 import com.calorietracker.app.notification.NotificationHelper
 import com.calorietracker.app.notification.NotificationScheduler
 
+import com.calorietracker.app.data.local.AppDatabase
+import com.calorietracker.app.data.local.MealDao
+import com.calorietracker.app.data.local.MealEntity
+import com.calorietracker.app.data.local.toMealEntity
+import com.calorietracker.app.data.local.toMealEntry
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
+
 class MainActivity : ComponentActivity() {
 
     private val aiRepository = AiRepository()
     private lateinit var dataExporter: DataExporter
     private lateinit var preferencesRepository: PreferencesRepository
+    private lateinit var database: AppDatabase
+    private lateinit var mealDao: MealDao
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         dataExporter = DataExporter(this)
         preferencesRepository = PreferencesRepository(this)
+        database = AppDatabase.getInstance(this)
+        mealDao = database.mealDao()
 
         NotificationHelper.createNotificationChannel(this)
         NotificationScheduler.schedulePeriodicCoachNotifications(this)
@@ -89,65 +102,77 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        // Pre-seeded chat logs from Sept 7 to Sept 10
-        val allMeals = remember {
-            mutableStateListOf(
-                MealEntry(
-                    dateIso = "2026-09-07",
-                    foodName = "Haldiram Bread, Saoji Gravy, Eggs, Tarri Poha",
-                    portionDescription = "Daily food log",
-                    calories = 1685,
-                    proteinGrams = 110.5f,
-                    carbsGrams = 175f,
-                    fatGrams = 48f,
-                    mealCategory = "Day Log"
-                ),
-                MealEntry(
-                    dateIso = "2026-09-08",
-                    foodName = "Rotis, Chicken Dry/Curry, Nakpro Whey, Sabudana Khichdi",
-                    portionDescription = "Daily food log",
-                    calories = 2302,
-                    proteinGrams = 154.5f,
-                    carbsGrams = 220f,
-                    fatGrams = 62f,
-                    mealCategory = "Day Log"
-                ),
-                MealEntry(
-                    dateIso = "2026-09-09",
-                    foodName = "3 Rotis, Dahi Samosa, 200g Chicken, Nakpro Whey",
-                    portionDescription = "Daily food log",
-                    calories = 1945,
-                    proteinGrams = 147.5f,
-                    carbsGrams = 195f,
-                    fatGrams = 55f,
-                    mealCategory = "Day Log"
-                ),
-                MealEntry(
-                    dateIso = "2026-09-10",
-                    foodName = "3 Rotis, Chicken Curry, 2 scoops Nakpro Whey, Eggs",
-                    portionDescription = "Daily food log",
-                    calories = 2615,
-                    proteinGrams = 192.0f,
-                    carbsGrams = 230f,
-                    fatGrams = 70f,
-                    mealCategory = "Day Log"
-                )
-            )
+        // Collect all meals reactively from Room SQLite database
+        val allMealEntities by mealDao.getAllMeals().collectAsState(initial = emptyList())
+        val allMeals = remember(allMealEntities) {
+            allMealEntities.map { it.toMealEntry() }
+        }
+
+        // Seed initial historical sample data into Room SQLite if database is empty
+        LaunchedEffect(Unit) {
+            withContext(Dispatchers.IO) {
+                val existing = mealDao.getAllMeals().first()
+                if (existing.isEmpty()) {
+                    val seedData = listOf(
+                        MealEntity(
+                            dateIso = "2026-09-07",
+                            foodName = "Haldiram Bread, Saoji Gravy, Eggs, Tarri Poha",
+                            portionDescription = "Daily food log",
+                            calories = 1685,
+                            proteinGrams = 110.5f,
+                            carbsGrams = 175f,
+                            fatGrams = 48f,
+                            mealCategory = "Day Log"
+                        ),
+                        MealEntity(
+                            dateIso = "2026-09-08",
+                            foodName = "Rotis, Chicken Dry/Curry, Nakpro Whey, Sabudana Khichdi",
+                            portionDescription = "Daily food log",
+                            calories = 2302,
+                            proteinGrams = 154.5f,
+                            carbsGrams = 220f,
+                            fatGrams = 62f,
+                            mealCategory = "Day Log"
+                        ),
+                        MealEntity(
+                            dateIso = "2026-09-09",
+                            foodName = "3 Rotis, Dahi Samosa, 200g Chicken, Nakpro Whey",
+                            portionDescription = "Daily food log",
+                            calories = 1945,
+                            proteinGrams = 147.5f,
+                            carbsGrams = 195f,
+                            fatGrams = 55f,
+                            mealCategory = "Day Log"
+                        ),
+                        MealEntity(
+                            dateIso = "2026-09-10",
+                            foodName = "3 Rotis, Chicken Curry, 2 scoops Nakpro Whey, Eggs",
+                            portionDescription = "Daily food log",
+                            calories = 2615,
+                            proteinGrams = 192.0f,
+                            carbsGrams = 230f,
+                            fatGrams = 70f,
+                            mealCategory = "Day Log"
+                        )
+                    )
+                    mealDao.insertAll(seedData)
+                }
+            }
         }
 
         fun deleteMealWithUndo(meal: MealEntry) {
-            val removedIndex = allMeals.indexOfFirst { it.id == meal.id }
-            if (removedIndex != -1) {
-                val removedMeal = allMeals.removeAt(removedIndex)
-                scope.launch {
-                    val result = snackbarHostState.showSnackbar(
-                        message = "Deleted: ${removedMeal.foodName}",
-                        actionLabel = "UNDO",
-                        duration = SnackbarDuration.Short
-                    )
-                    if (result == SnackbarResult.ActionPerformed) {
-                        val restoreIndex = removedIndex.coerceIn(0, allMeals.size)
-                        allMeals.add(restoreIndex, removedMeal)
+            scope.launch {
+                withContext(Dispatchers.IO) {
+                    mealDao.deleteMealById(meal.id)
+                }
+                val result = snackbarHostState.showSnackbar(
+                    message = "Deleted: ${meal.foodName}",
+                    actionLabel = "UNDO",
+                    duration = SnackbarDuration.Short
+                )
+                if (result == SnackbarResult.ActionPerformed) {
+                    withContext(Dispatchers.IO) {
+                        mealDao.insertMeal(meal.toMealEntity())
                     }
                 }
             }
@@ -309,17 +334,18 @@ class MainActivity : ComponentActivity() {
                                 isLoadingAi = false
                                 result.onSuccess { parseResult ->
                                     val entry = parseResult.mealEntry
-                                    val existingIndex = allMeals.indexOfFirst {
-                                        it.dateIso == entry.dateIso && it.foodName.equals(entry.foodName, ignoreCase = true)
+                                    withContext(Dispatchers.IO) {
+                                        val existing = allMealEntities.find {
+                                            it.dateIso == entry.dateIso && it.foodName.equals(entry.foodName, ignoreCase = true)
+                                        }
+                                        val entityToSave = if (existing != null) {
+                                            entry.copy(id = existing.id).toMealEntity()
+                                        } else {
+                                            entry.toMealEntity()
+                                        }
+                                        mealDao.insertMeal(entityToSave)
                                     }
-
-                                    if (existingIndex != -1) {
-                                        allMeals[existingIndex] = entry
-                                        Toast.makeText(this@MainActivity, "Updated (${entry.dateIso}): ${entry.foodName}", Toast.LENGTH_SHORT).show()
-                                    } else {
-                                        allMeals.add(0, entry)
-                                        Toast.makeText(this@MainActivity, "Logged (${entry.dateIso}): ${entry.foodName}", Toast.LENGTH_SHORT).show()
-                                    }
+                                    Toast.makeText(this@MainActivity, "Saved (${entry.dateIso}): ${entry.foodName}", Toast.LENGTH_SHORT).show()
                                     coachAdvice = parseResult.coachAdvice
                                 }.onFailure { error ->
                                     Toast.makeText(this@MainActivity, "AI Parsing Notice: ${error.localizedMessage}", Toast.LENGTH_LONG).show()
