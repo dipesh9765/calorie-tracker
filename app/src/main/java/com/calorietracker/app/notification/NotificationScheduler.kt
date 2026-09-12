@@ -7,21 +7,19 @@ import androidx.work.WorkManager
 import java.util.concurrent.TimeUnit
 
 object NotificationScheduler {
-    private const val WORK_TAG = "ai_coach_periodic_work"
+  private const val WORK_TAG = "ai_coach_periodic_work"
 
-    fun schedulePeriodicCoachNotifications(context: Context) {
-        val workRequest = PeriodicWorkRequestBuilder<CoachNotificationWorker>(2, TimeUnit.HOURS)
-            .addTag(WORK_TAG)
-            .build()
+  fun schedulePeriodicCoachNotifications(context: Context) {
+    val workRequest =
+      PeriodicWorkRequestBuilder<CoachNotificationWorker>(2, TimeUnit.HOURS)
+        .addTag(WORK_TAG)
+        .build()
 
-        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-            WORK_TAG,
-            ExistingPeriodicWorkPolicy.KEEP,
-            workRequest
-        )
-    }
+    WorkManager.getInstance(context)
+      .enqueueUniquePeriodicWork(WORK_TAG, ExistingPeriodicWorkPolicy.KEEP, workRequest)
+  }
 
-    fun cancelCoachNotifications(context: Context) {
-        WorkManager.getInstance(context).cancelUniqueWork(WORK_TAG)
-    }
+  fun cancelCoachNotifications(context: Context) {
+    WorkManager.getInstance(context).cancelUniqueWork(WORK_TAG)
+  }
 }

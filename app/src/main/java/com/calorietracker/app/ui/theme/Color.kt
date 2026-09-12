@@ -14,7 +14,8 @@ val AccentPurple = Color(0xFFB388FF)
 val TextPrimary = Color(0xFFF1F5F9)
 val TextSecondary = Color(0xFF94A3B8)
 
-val DarkColorScheme = darkColorScheme(
+val DarkColorScheme =
+  darkColorScheme(
     primary = PrimaryBlue,
     onPrimary = Color.White,
     primaryContainer = PrimaryBlueVariant,
@@ -24,4 +25,4 @@ val DarkColorScheme = darkColorScheme(
     onBackground = TextPrimary,
     onSurface = TextPrimary,
     onSurfaceVariant = TextSecondary
-)
+  )

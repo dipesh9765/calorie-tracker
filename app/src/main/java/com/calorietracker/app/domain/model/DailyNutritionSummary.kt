@@ -10,17 +10,18 @@ package com.calorietracker.app.domain.model
  * @property targetProtein Target protein goal in grams (e.g. 180 g).
  * @property totalCarbs Total carbohydrates consumed in grams.
  * @property totalFat Total fat consumed in grams.
- * @property creatineTaken Flag indicating whether the 5g daily creatine monohydrate dose was completed.
+ * @property creatineTaken Flag indicating whether the 5g daily creatine monohydrate dose was
+ *   completed.
  * @property mealsCount Total number of individual meals recorded on this date.
  */
 data class DailyNutritionSummary(
-    val dateIso: String,
-    val totalCalories: Int,
-    val targetCalories: Int,
-    val totalProtein: Float,
-    val targetProtein: Float,
-    val totalCarbs: Float,
-    val totalFat: Float,
-    val creatineTaken: Boolean,
-    val mealsCount: Int
+  val dateIso: String,
+  val totalCalories: Int,
+  val targetCalories: Int,
+  val totalProtein: Float,
+  val targetProtein: Float,
+  val totalCarbs: Float,
+  val totalFat: Float,
+  val creatineTaken: Boolean,
+  val mealsCount: Int
 )

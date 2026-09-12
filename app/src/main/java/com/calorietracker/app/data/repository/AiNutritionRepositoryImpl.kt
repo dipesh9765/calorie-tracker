@@ -1,55 +1,58 @@
 package com.calorietracker.app.data.repository
 
-import com.calorietracker.app.data.model.MealEntry
 import com.calorietracker.app.data.remote.adapter.*
 import com.calorietracker.app.domain.model.AiProviderType
 import com.calorietracker.app.domain.model.Meal
 import com.calorietracker.app.domain.repository.IAiNutritionRepository
 import com.google.gson.Gson
 import com.google.gson.JsonObject
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
- * Concrete implementation of [IAiNutritionRepository].
- * Delegates multi-LLM meal text parsing to specific provider adapters (Gemini, OpenAI, Claude, DeepSeek)
- * with temporal context awareness (today vs yesterday vs relative dates) and action resolution.
+ * Concrete implementation of [IAiNutritionRepository]. Delegates multi-LLM meal text parsing to
+ * specific provider adapters (Gemini, OpenAI, Claude, DeepSeek) with temporal context awareness
+ * (today vs yesterday vs relative dates) and action resolution.
  */
 class AiNutritionRepositoryImpl(
-    private val geminiAdapter: IAiProviderAdapter = GeminiAdapter(),
-    private val openAiAdapter: IAiProviderAdapter = OpenAiAdapter(),
-    private val claudeAdapter: IAiProviderAdapter = ClaudeAdapter(),
-    private val deepSeekAdapter: IAiProviderAdapter = DeepSeekAdapter(),
-    private val gson: Gson = Gson()
+  private val geminiAdapter: IAiProviderAdapter = GeminiAdapter(),
+  private val openAiAdapter: IAiProviderAdapter = OpenAiAdapter(),
+  private val claudeAdapter: IAiProviderAdapter = ClaudeAdapter(),
+  private val deepSeekAdapter: IAiProviderAdapter = DeepSeekAdapter(),
+  private val gson: Gson = Gson()
 ) : IAiNutritionRepository {
 
-    override suspend fun parseMealText(
-        mealText: String,
-        provider: AiProviderType,
-        apiKey: String,
-        modelName: String,
-        todayContext: String,
-        yesterdayContext: String
-    ): Result<Pair<Meal, String>> = withContext(Dispatchers.IO) {
-        try {
-            val cleanKey = apiKey.trim()
-            if (cleanKey.isBlank()) {
-                return@withContext Result.failure(
-                    IllegalArgumentException("API Key for ${provider.displayName} is missing. Please configure it in Profile Settings.")
-                )
-            }
-
-            val todayIso = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-            val yesterdayIso = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(
-                Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }.time
+  override suspend fun parseMealText(
+    mealText: String,
+    provider: AiProviderType,
+    apiKey: String,
+    modelName: String,
+    todayContext: String,
+    yesterdayContext: String
+  ): Result<Pair<Meal, String>> =
+    withContext(Dispatchers.IO) {
+      try {
+        val cleanKey = apiKey.trim()
+        if (cleanKey.isBlank()) {
+          return@withContext Result.failure(
+            IllegalArgumentException(
+              "API Key for ${provider.displayName} is missing. Please configure it in Profile Settings."
             )
-            val dayOfWeek = SimpleDateFormat("EEEE", Locale.getDefault()).format(Date())
+          )
+        }
 
-            val dynamicSystemInstruction = """
+        val todayIso = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+        val yesterdayIso =
+          SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            .format(Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }.time)
+        val dayOfWeek = SimpleDateFormat("EEEE", Locale.getDefault()).format(Date())
+
+        val dynamicSystemInstruction =
+          """
                 You are an expert Indian Clinical & Sports Nutritionist specializing in Indian cuisine, specifically central Indian / Nagpur local diet (e.g. rotis, tarri poha, saoji, sabudana khichdi, dahi samosa, chicken breast/curry, Nakpro whey, Beast Life creatine, etc.).
                 
                 Current System Context:
@@ -98,75 +101,88 @@ class AiNutritionRepositoryImpl(
                   "mealCategory": "Lunch",
                   "advice": "Short nutritional tip for achieving 180g daily protein within 2300 kcal deficit."
                 }
-            """.trimIndent()
+            """
+            .trimIndent()
 
-            val adapter = when (provider) {
-                AiProviderType.GEMINI -> geminiAdapter
-                AiProviderType.OPENAI -> openAiAdapter
-                AiProviderType.CLAUDE -> claudeAdapter
-                AiProviderType.DEEPSEEK -> deepSeekAdapter
-            }
+        val adapter =
+          when (provider) {
+            AiProviderType.GEMINI -> geminiAdapter
+            AiProviderType.OPENAI -> openAiAdapter
+            AiProviderType.CLAUDE -> claudeAdapter
+            AiProviderType.DEEPSEEK -> deepSeekAdapter
+          }
 
-            val rawResponse = adapter.parseMeal(mealText, cleanKey, dynamicSystemInstruction, modelName)
-            val jsonString = extractJsonString(rawResponse)
-            val jsonObject = gson.fromJson(jsonString, JsonObject::class.java)
+        val rawResponse = adapter.parseMeal(mealText, cleanKey, dynamicSystemInstruction, modelName)
+        val jsonString = extractJsonString(rawResponse)
+        val jsonObject = gson.fromJson(jsonString, JsonObject::class.java)
 
-            val foodName = jsonObject.get("foodName")?.asStringSafely() ?: mealText
-            val portionDescription = jsonObject.get("portionDescription")?.asStringSafely() ?: "Estimated portion"
-            val calories = jsonObject.get("calories")?.asIntSafely() ?: 0
-            val proteinGrams = jsonObject.get("proteinGrams")?.asFloatSafely() ?: 0f
-            val carbsGrams = jsonObject.get("carbsGrams")?.asFloatSafely() ?: 0f
-            val fatGrams = jsonObject.get("fatGrams")?.asFloatSafely() ?: 0f
-            val mealCategory = jsonObject.get("mealCategory")?.asStringSafely() ?: "Meal"
-            val targetDateIso = jsonObject.get("targetDateIso")?.asStringSafely() ?: todayIso
-            val advice = jsonObject.get("advice")?.asStringSafely() ?: "Keep hitting your daily protein target!"
+        val action = jsonObject.get("action")?.asStringSafely() ?: "CREATE"
+        val foodName = jsonObject.get("foodName")?.asStringSafely() ?: mealText
+        val portionDescription =
+          jsonObject.get("portionDescription")?.asStringSafely() ?: "Estimated portion"
+        val calories = jsonObject.get("calories")?.asIntSafely() ?: 0
+        val proteinGrams = jsonObject.get("proteinGrams")?.asFloatSafely() ?: 0f
+        val carbsGrams = jsonObject.get("carbsGrams")?.asFloatSafely() ?: 0f
+        val fatGrams = jsonObject.get("fatGrams")?.asFloatSafely() ?: 0f
+        val mealCategory = jsonObject.get("mealCategory")?.asStringSafely() ?: "Meal"
+        val targetDateIso = jsonObject.get("targetDateIso")?.asStringSafely() ?: todayIso
+        val advice =
+          jsonObject.get("advice")?.asStringSafely() ?: "Keep hitting your daily protein target!"
 
-            val meal = Meal(
-                foodName = foodName,
-                portionDescription = portionDescription,
-                calories = calories,
-                proteinGrams = proteinGrams,
-                carbsGrams = carbsGrams,
-                fatGrams = fatGrams,
-                mealCategory = mealCategory,
-                dateIso = targetDateIso
-            )
+        val meal =
+          Meal(
+            foodName = foodName,
+            portionDescription = portionDescription,
+            calories = calories,
+            proteinGrams = proteinGrams,
+            carbsGrams = carbsGrams,
+            fatGrams = fatGrams,
+            mealCategory = mealCategory,
+            dateIso = targetDateIso,
+            action = action
+          )
 
-            Result.success(Pair(meal, advice))
-        } catch (e: Exception) {
-            val userFriendlyError = when {
-                e is java.net.SocketTimeoutException || e.message?.contains("timeout", ignoreCase = true) == true ->
-                    Exception("Network request timed out while contacting ${provider.displayName}. Please check your connection and retry.")
-                e is java.net.UnknownHostException ->
-                    Exception("No internet connection available. Please check your network and retry.")
-                else -> e
-            }
-            Result.failure(userFriendlyError)
-        }
+        Result.success(Pair(meal, advice))
+      } catch (e: Exception) {
+        val userFriendlyError =
+          when {
+            e is java.net.SocketTimeoutException ||
+              e.message?.contains("timeout", ignoreCase = true) == true ->
+              Exception(
+                "Network request timed out while contacting ${provider.displayName}. Please check your connection and retry."
+              )
+            e is java.net.UnknownHostException ->
+              Exception("No internet connection available. Please check your network and retry.")
+            else -> e
+          }
+        Result.failure(userFriendlyError)
+      }
     }
 
-    override suspend fun generateNotificationAdvice(
-        provider: AiProviderType,
-        apiKey: String,
-        modelName: String,
-        userName: String,
-        todayContext: String,
-        yesterdayContext: String,
-        targetCalories: Int,
-        targetProtein: Float
-    ): Result<String> = withContext(Dispatchers.IO) {
-        try {
-            val cleanKey = apiKey.trim()
-            if (cleanKey.isBlank()) {
-                return@withContext Result.failure(
-                    IllegalArgumentException("API Key for ${provider.displayName} is missing.")
-                )
-            }
+  override suspend fun generateNotificationAdvice(
+    provider: AiProviderType,
+    apiKey: String,
+    modelName: String,
+    userName: String,
+    todayContext: String,
+    yesterdayContext: String,
+    targetCalories: Int,
+    targetProtein: Float
+  ): Result<String> =
+    withContext(Dispatchers.IO) {
+      try {
+        val cleanKey = apiKey.trim()
+        if (cleanKey.isBlank()) {
+          return@withContext Result.failure(
+            IllegalArgumentException("API Key for ${provider.displayName} is missing.")
+          )
+        }
 
-            val todayIso = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-            val currentTime = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+        val todayIso = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+        val currentTime = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
 
-            val systemInstruction = """
+        val systemInstruction =
+          """
                 You are an expert Indian Clinical & Sports Nutritionist giving real-time push notification advice to $userName.
                 Current Time: $currentTime on $todayIso.
                 User Target Goals: $targetCalories kcal daily target, ${targetProtein}g daily protein target.
@@ -182,79 +198,83 @@ class AiNutritionRepositoryImpl(
                 - If today's calories are near or over target, suggest light alternatives (e.g. cucumber salad, clear soup, roasted makhana) or lighter dinner options.
                 - Output strictly a JSON object with key "advice". No extra conversational filler.
                 Example JSON: {"advice": "Hey $userName, you need 35g more protein today! Try having 1 scoop of protein shake or 4 eggs for dinner."}
-            """.trimIndent()
+            """
+            .trimIndent()
 
-            val adapter = when (provider) {
-                AiProviderType.GEMINI -> geminiAdapter
-                AiProviderType.OPENAI -> openAiAdapter
-                AiProviderType.CLAUDE -> claudeAdapter
-                AiProviderType.DEEPSEEK -> deepSeekAdapter
-            }
+        val adapter =
+          when (provider) {
+            AiProviderType.GEMINI -> geminiAdapter
+            AiProviderType.OPENAI -> openAiAdapter
+            AiProviderType.CLAUDE -> claudeAdapter
+            AiProviderType.DEEPSEEK -> deepSeekAdapter
+          }
 
-            val rawResponse = adapter.parseMeal(
-                inputText = "Generate push notification recommendation for $userName",
-                apiKey = cleanKey,
-                systemInstruction = systemInstruction,
-                modelName = modelName
-            )
+        val rawResponse =
+          adapter.parseMeal(
+            inputText = "Generate push notification recommendation for $userName",
+            apiKey = cleanKey,
+            systemInstruction = systemInstruction,
+            modelName = modelName
+          )
 
-            val jsonString = extractJsonString(rawResponse)
-            val jsonObject = gson.fromJson(jsonString, JsonObject::class.java)
-            val advice = jsonObject.get("advice")?.asStringSafely() ?: rawResponse.replace(Regex("```.*```"), "").trim()
+        val jsonString = extractJsonString(rawResponse)
+        val jsonObject = gson.fromJson(jsonString, JsonObject::class.java)
+        val advice =
+          jsonObject.get("advice")?.asStringSafely()
+            ?: rawResponse.replace(Regex("```.*```"), "").trim()
 
-            if (advice.isNotBlank()) {
-                Result.success(advice)
-            } else {
-                Result.failure(IllegalStateException("Empty recommendation generated by ${provider.displayName}"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
+        if (advice.isNotBlank()) {
+          Result.success(advice)
+        } else {
+          Result.failure(
+            IllegalStateException("Empty recommendation generated by ${provider.displayName}")
+          )
         }
+      } catch (e: Exception) {
+        Result.failure(e)
+      }
     }
 
-    /**
-     * Extracts pure JSON string from raw text response, removing any markdown code blocks or surrounding text.
-     */
-    fun extractJsonString(rawResponse: String): String {
-        val start = rawResponse.indexOf('{')
-        val end = rawResponse.lastIndexOf('}')
-        if (start != -1 && end != -1 && end > start) {
-            return rawResponse.substring(start, end + 1)
-        }
-        return rawResponse
-            .replace("```json", "")
-            .replace("```", "")
-            .trim()
+  /**
+   * Extracts pure JSON string from raw text response, removing any markdown code blocks or
+   * surrounding text.
+   */
+  fun extractJsonString(rawResponse: String): String {
+    val start = rawResponse.indexOf('{')
+    val end = rawResponse.lastIndexOf('}')
+    if (start != -1 && end != -1 && end > start) {
+      return rawResponse.substring(start, end + 1)
     }
+    return rawResponse.replace("```json", "").replace("```", "").trim()
+  }
 }
 
 private fun com.google.gson.JsonElement.asStringSafely(): String {
-    return try {
-        if (this.isJsonPrimitive) this.asString else this.toString()
-    } catch (_: Exception) {
-        this.toString()
-    }
+  return try {
+    if (this.isJsonPrimitive) this.asString else this.toString()
+  } catch (_: Exception) {
+    this.toString()
+  }
 }
 
 private fun com.google.gson.JsonElement.asIntSafely(): Int {
-    return try {
-        if (this.isJsonPrimitive) {
-            val prim = this.asJsonPrimitive
-            if (prim.isNumber) prim.asInt else prim.asString.toDoubleOrNull()?.toInt() ?: 0
-        } else 0
-    } catch (_: Exception) {
-        0
-    }
+  return try {
+    if (this.isJsonPrimitive) {
+      val prim = this.asJsonPrimitive
+      if (prim.isNumber) prim.asInt else prim.asString.toDoubleOrNull()?.toInt() ?: 0
+    } else 0
+  } catch (_: Exception) {
+    0
+  }
 }
 
 private fun com.google.gson.JsonElement.asFloatSafely(): Float {
-    return try {
-        if (this.isJsonPrimitive) {
-            val prim = this.asJsonPrimitive
-            if (prim.isNumber) prim.asFloat else prim.asString.toFloatOrNull() ?: 0f
-        } else 0f
-    } catch (_: Exception) {
-        0f
-    }
+  return try {
+    if (this.isJsonPrimitive) {
+      val prim = this.asJsonPrimitive
+      if (prim.isNumber) prim.asFloat else prim.asString.toFloatOrNull() ?: 0f
+    } else 0f
+  } catch (_: Exception) {
+    0f
+  }
 }
-

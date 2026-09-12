@@ -1,9 +1,14 @@
 package com.calorietracker.app
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -15,381 +20,407 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.calorietracker.app.data.exporter.DataExporter
+import com.calorietracker.app.data.local.AppDatabase
+import com.calorietracker.app.data.local.MealDao
+import com.calorietracker.app.data.local.MealEntity
+import com.calorietracker.app.data.local.toMealEntity
+import com.calorietracker.app.data.local.toMealEntry
 import com.calorietracker.app.data.model.DailySummary
 import com.calorietracker.app.data.model.MealEntry
-import com.calorietracker.app.data.model.UserProfile
 import com.calorietracker.app.data.repository.AiRepository
+import com.calorietracker.app.data.repository.PreferencesRepository
+import com.calorietracker.app.notification.NotificationHelper
+import com.calorietracker.app.notification.NotificationScheduler
 import com.calorietracker.app.ui.screens.*
 import com.calorietracker.app.ui.theme.BackgroundDark
 import com.calorietracker.app.ui.theme.CalorieTrackerTheme
 import com.calorietracker.app.ui.theme.PrimaryBlue
 import com.calorietracker.app.ui.theme.SurfaceDark
 import com.calorietracker.app.ui.theme.TextSecondary
-import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-
-import com.calorietracker.app.data.repository.PreferencesRepository
-
-import android.Manifest
-import android.content.pm.PackageManager
-import android.os.Build
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.content.ContextCompat
-import com.calorietracker.app.notification.NotificationHelper
-import com.calorietracker.app.notification.NotificationScheduler
-
-import com.calorietracker.app.data.local.AppDatabase
-import com.calorietracker.app.data.local.MealDao
-import com.calorietracker.app.data.local.MealEntity
-import com.calorietracker.app.data.local.toMealEntity
-import com.calorietracker.app.data.local.toMealEntry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
 
-    private val aiRepository = AiRepository()
-    private lateinit var dataExporter: DataExporter
-    private lateinit var preferencesRepository: PreferencesRepository
-    private lateinit var database: AppDatabase
-    private lateinit var mealDao: MealDao
+  private val aiRepository = AiRepository()
+  private lateinit var dataExporter: DataExporter
+  private lateinit var preferencesRepository: PreferencesRepository
+  private lateinit var database: AppDatabase
+  private lateinit var mealDao: MealDao
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        dataExporter = DataExporter(this)
-        preferencesRepository = PreferencesRepository(this)
-        database = AppDatabase.getInstance(this)
-        mealDao = database.mealDao()
+  override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    dataExporter = DataExporter(this)
+    preferencesRepository = PreferencesRepository(this)
+    database = AppDatabase.getInstance(this)
+    mealDao = database.mealDao()
 
-        NotificationHelper.createNotificationChannel(this)
-        NotificationScheduler.schedulePeriodicCoachNotifications(this)
+    NotificationHelper.createNotificationChannel(this)
+    NotificationScheduler.schedulePeriodicCoachNotifications(this)
 
-        setContent {
-            CalorieTrackerTheme {
-                MainAppContainer()
-            }
+    setContent { CalorieTrackerTheme { MainAppContainer() } }
+  }
+
+  @Composable
+  fun MainAppContainer() {
+    var selectedScreenIndex by remember { mutableIntStateOf(0) }
+    var userProfile by remember { mutableStateOf(preferencesRepository.getUserProfile()) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
+    // Notification Permission Request for Android 13+
+    val permissionLauncher =
+      rememberLauncherForActivityResult(contract = ActivityResultContracts.RequestPermission()) { _
+        ->
+      }
+
+    LaunchedEffect(Unit) {
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        if (
+          ContextCompat.checkSelfPermission(
+            this@MainActivity,
+            Manifest.permission.POST_NOTIFICATIONS
+          ) != PackageManager.PERMISSION_GRANTED
+        ) {
+          permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
+      }
     }
 
-    @Composable
-    fun MainAppContainer() {
-        var selectedScreenIndex by remember { mutableIntStateOf(0) }
-        var userProfile by remember { mutableStateOf(preferencesRepository.getUserProfile()) }
-        val snackbarHostState = remember { SnackbarHostState() }
-        val scope = rememberCoroutineScope()
+    // Collect all meals reactively from Room SQLite database
+    val allMealEntities by mealDao.getAllMeals().collectAsState(initial = emptyList())
+    val allMeals = remember(allMealEntities) { allMealEntities.map { it.toMealEntry() } }
 
-        // Notification Permission Request for Android 13+
-        val permissionLauncher = rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.RequestPermission()
-        ) { _ -> }
-
-        LaunchedEffect(Unit) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                if (ContextCompat.checkSelfPermission(
-                        this@MainActivity,
-                        Manifest.permission.POST_NOTIFICATIONS
-                    ) != PackageManager.PERMISSION_GRANTED
-                ) {
-                    permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                }
-            }
+    // Seed initial historical sample data into Room SQLite if database is empty
+    LaunchedEffect(Unit) {
+      withContext(Dispatchers.IO) {
+        val existing = mealDao.getAllMeals().first()
+        if (existing.isEmpty()) {
+          val seedData =
+            listOf(
+              MealEntity(
+                dateIso = "2026-09-07",
+                foodName = "Haldiram Bread, Saoji Gravy, Eggs, Tarri Poha",
+                portionDescription = "Daily food log",
+                calories = 1685,
+                proteinGrams = 110.5f,
+                carbsGrams = 175f,
+                fatGrams = 48f,
+                mealCategory = "Day Log"
+              ),
+              MealEntity(
+                dateIso = "2026-09-08",
+                foodName = "Rotis, Chicken Dry/Curry, Nakpro Whey, Sabudana Khichdi",
+                portionDescription = "Daily food log",
+                calories = 2302,
+                proteinGrams = 154.5f,
+                carbsGrams = 220f,
+                fatGrams = 62f,
+                mealCategory = "Day Log"
+              ),
+              MealEntity(
+                dateIso = "2026-09-09",
+                foodName = "3 Rotis, Dahi Samosa, 200g Chicken, Nakpro Whey",
+                portionDescription = "Daily food log",
+                calories = 1945,
+                proteinGrams = 147.5f,
+                carbsGrams = 195f,
+                fatGrams = 55f,
+                mealCategory = "Day Log"
+              ),
+              MealEntity(
+                dateIso = "2026-09-10",
+                foodName = "3 Rotis, Chicken Curry, 2 scoops Nakpro Whey, Eggs",
+                portionDescription = "Daily food log",
+                calories = 2615,
+                proteinGrams = 192.0f,
+                carbsGrams = 230f,
+                fatGrams = 70f,
+                mealCategory = "Day Log"
+              )
+            )
+          mealDao.insertAll(seedData)
         }
+      }
+    }
 
-        // Collect all meals reactively from Room SQLite database
-        val allMealEntities by mealDao.getAllMeals().collectAsState(initial = emptyList())
-        val allMeals = remember(allMealEntities) {
-            allMealEntities.map { it.toMealEntry() }
+    fun deleteMealWithUndo(meal: MealEntry) {
+      scope.launch {
+        withContext(Dispatchers.IO) { mealDao.deleteMealById(meal.id) }
+        val result =
+          snackbarHostState.showSnackbar(
+            message = "Deleted: ${meal.foodName}",
+            actionLabel = "UNDO",
+            duration = SnackbarDuration.Short
+          )
+        if (result == SnackbarResult.ActionPerformed) {
+          withContext(Dispatchers.IO) { mealDao.insertMeal(meal.toMealEntity()) }
         }
+      }
+    }
 
-        // Seed initial historical sample data into Room SQLite if database is empty
-        LaunchedEffect(Unit) {
-            withContext(Dispatchers.IO) {
-                val existing = mealDao.getAllMeals().first()
-                if (existing.isEmpty()) {
-                    val seedData = listOf(
-                        MealEntity(
-                            dateIso = "2026-09-07",
-                            foodName = "Haldiram Bread, Saoji Gravy, Eggs, Tarri Poha",
-                            portionDescription = "Daily food log",
-                            calories = 1685,
-                            proteinGrams = 110.5f,
-                            carbsGrams = 175f,
-                            fatGrams = 48f,
-                            mealCategory = "Day Log"
-                        ),
-                        MealEntity(
-                            dateIso = "2026-09-08",
-                            foodName = "Rotis, Chicken Dry/Curry, Nakpro Whey, Sabudana Khichdi",
-                            portionDescription = "Daily food log",
-                            calories = 2302,
-                            proteinGrams = 154.5f,
-                            carbsGrams = 220f,
-                            fatGrams = 62f,
-                            mealCategory = "Day Log"
-                        ),
-                        MealEntity(
-                            dateIso = "2026-09-09",
-                            foodName = "3 Rotis, Dahi Samosa, 200g Chicken, Nakpro Whey",
-                            portionDescription = "Daily food log",
-                            calories = 1945,
-                            proteinGrams = 147.5f,
-                            carbsGrams = 195f,
-                            fatGrams = 55f,
-                            mealCategory = "Day Log"
-                        ),
-                        MealEntity(
-                            dateIso = "2026-09-10",
-                            foodName = "3 Rotis, Chicken Curry, 2 scoops Nakpro Whey, Eggs",
-                            portionDescription = "Daily food log",
-                            calories = 2615,
-                            proteinGrams = 192.0f,
-                            carbsGrams = 230f,
-                            fatGrams = 70f,
-                            mealCategory = "Day Log"
-                        )
+    val todayIso = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+    val todayMeals = allMeals.filter { it.dateIso == todayIso }
+
+    val todayTotalCalories = todayMeals.sumOf { it.calories }
+    val todayTotalProtein = todayMeals.sumOf { it.proteinGrams.toDouble() }.toFloat()
+    val todayTotalCarbs = todayMeals.sumOf { it.carbsGrams.toDouble() }.toFloat()
+    val todayTotalFat = todayMeals.sumOf { it.fatGrams.toDouble() }.toFloat()
+
+    var creatineTaken by remember { mutableStateOf(true) }
+    var coachAdvice by remember { mutableStateOf("") }
+    var isLoadingAi by remember { mutableStateOf(false) }
+
+    // Aggregate Daily Summaries for Analytics
+    val weeklySummaries =
+      remember(allMeals.size) {
+        val grouped = allMeals.groupBy { it.dateIso }
+        grouped
+          .map { (date, meals) ->
+            DailySummary(
+              dateIso = date,
+              totalCalories = meals.sumOf { it.calories },
+              targetCalories = userProfile.targetDailyCalories,
+              totalProtein = meals.sumOf { it.proteinGrams.toDouble() }.toFloat(),
+              targetProtein = userProfile.targetDailyProteinGrams,
+              totalCarbs = meals.sumOf { it.carbsGrams.toDouble() }.toFloat(),
+              totalFat = meals.sumOf { it.fatGrams.toDouble() }.toFloat(),
+              creatineTaken = true,
+              mealsCount = meals.size
+            )
+          }
+          .sortedBy { it.dateIso }
+      }
+
+    Scaffold(
+      snackbarHost = { SnackbarHost(snackbarHostState) },
+      bottomBar = {
+        NavigationBar(containerColor = SurfaceDark, contentColor = PrimaryBlue) {
+          NavigationBarItem(
+            selected = selectedScreenIndex == 0,
+            onClick = { selectedScreenIndex = 0 },
+            icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
+            label = { Text("Today") },
+            colors =
+              NavigationBarItemDefaults.colors(
+                selectedIconColor = Color.White,
+                selectedTextColor = Color.White,
+                indicatorColor = PrimaryBlue,
+                unselectedIconColor = TextSecondary,
+                unselectedTextColor = TextSecondary
+              )
+          )
+          NavigationBarItem(
+            selected = selectedScreenIndex == 1,
+            onClick = { selectedScreenIndex = 1 },
+            icon = { Icon(Icons.Default.BarChart, contentDescription = "Analytics") },
+            label = { Text("Analytics") },
+            colors =
+              NavigationBarItemDefaults.colors(
+                selectedIconColor = Color.White,
+                selectedTextColor = Color.White,
+                indicatorColor = PrimaryBlue,
+                unselectedIconColor = TextSecondary,
+                unselectedTextColor = TextSecondary
+              )
+          )
+          NavigationBarItem(
+            selected = selectedScreenIndex == 2,
+            onClick = { selectedScreenIndex = 2 },
+            icon = { Icon(Icons.Default.History, contentDescription = "History") },
+            label = { Text("Logs") },
+            colors =
+              NavigationBarItemDefaults.colors(
+                selectedIconColor = Color.White,
+                selectedTextColor = Color.White,
+                indicatorColor = PrimaryBlue,
+                unselectedIconColor = TextSecondary,
+                unselectedTextColor = TextSecondary
+              )
+          )
+          NavigationBarItem(
+            selected = selectedScreenIndex == 3,
+            onClick = { selectedScreenIndex = 3 },
+            icon = { Icon(Icons.Default.Person, contentDescription = "Profile") },
+            label = { Text("Profile") },
+            colors =
+              NavigationBarItemDefaults.colors(
+                selectedIconColor = Color.White,
+                selectedTextColor = Color.White,
+                indicatorColor = PrimaryBlue,
+                unselectedIconColor = TextSecondary,
+                unselectedTextColor = TextSecondary
+              )
+          )
+        }
+      }
+    ) { innerPadding ->
+      Box(modifier = Modifier.fillMaxSize().padding(innerPadding).background(BackgroundDark)) {
+        when (selectedScreenIndex) {
+          0 ->
+            HomeScreen(
+              userProfile = userProfile,
+              todayMeals = todayMeals,
+              todayTotalCalories = todayTotalCalories,
+              todayTotalProtein = todayTotalProtein,
+              todayTotalCarbs = todayTotalCarbs,
+              todayTotalFat = todayTotalFat,
+              creatineTaken = creatineTaken,
+              coachAdvice = coachAdvice,
+              isLoadingAi = isLoadingAi,
+              onLogMealSubmitted = { input ->
+                isLoadingAi = true
+                lifecycleScope.launch {
+                  val apiKey =
+                    when (userProfile.primaryAiProvider) {
+                      "OpenAI" -> userProfile.openAiApiKey
+                      "Claude" -> userProfile.claudeApiKey
+                      "DeepSeek" -> userProfile.deepSeekApiKey
+                      else -> userProfile.geminiApiKey
+                    }.trim()
+
+                  val modelName =
+                    when (userProfile.primaryAiProvider) {
+                      "OpenAI" -> userProfile.openAiModel
+                      "Claude" -> userProfile.claudeModel
+                      "DeepSeek" -> userProfile.deepSeekModel
+                      else -> userProfile.geminiModel
+                    }.trim()
+
+                  val yesterdayIso =
+                    SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                      .format(
+                        java.util.Calendar.getInstance()
+                          .apply { add(java.util.Calendar.DAY_OF_YEAR, -1) }
+                          .time
+                      )
+                  val yesterdayMeals = allMeals.filter { it.dateIso == yesterdayIso }
+                  val yesterdaySummaryText =
+                    if (yesterdayMeals.isNotEmpty()) {
+                      "Total: ${yesterdayMeals.sumOf { it.calories }} kcal, ${yesterdayMeals.sumOf { it.proteinGrams.toDouble() }}g Protein, ${yesterdayMeals.sumOf { it.carbsGrams.toDouble() }}g Carbs, ${yesterdayMeals.sumOf { it.fatGrams.toDouble() }}g Fat. Foods logged: " +
+                        yesterdayMeals.joinToString("; ") {
+                          "${it.foodName} (${it.calories} kcal, ${it.proteinGrams}g Protein)"
+                        }
+                    } else {
+                      "No meals logged for yesterday."
+                    }
+
+                  val todaySummaryText =
+                    if (todayMeals.isNotEmpty()) {
+                      "Current Total: $todayTotalCalories kcal, ${todayTotalProtein}g Protein, ${todayTotalCarbs}g Carbs, ${todayTotalFat}g Fat. Foods logged: " +
+                        todayMeals.joinToString("; ") {
+                          "${it.foodName} (${it.calories} kcal, ${it.proteinGrams}g Protein)"
+                        }
+                    } else {
+                      "No meals logged yet today."
+                    }
+
+                  val result =
+                    aiRepository.parseMealText(
+                      inputText = input,
+                      provider = userProfile.primaryAiProvider,
+                      apiKey = apiKey,
+                      modelName = modelName,
+                      todayContext = todaySummaryText,
+                      yesterdayContext = yesterdaySummaryText
                     )
-                    mealDao.insertAll(seedData)
-                }
-            }
-        }
 
-        fun deleteMealWithUndo(meal: MealEntry) {
-            scope.launch {
-                withContext(Dispatchers.IO) {
-                    mealDao.deleteMealById(meal.id)
-                }
-                val result = snackbarHostState.showSnackbar(
-                    message = "Deleted: ${meal.foodName}",
-                    actionLabel = "UNDO",
-                    duration = SnackbarDuration.Short
-                )
-                if (result == SnackbarResult.ActionPerformed) {
-                    withContext(Dispatchers.IO) {
-                        mealDao.insertMeal(meal.toMealEntity())
+                  isLoadingAi = false
+                  result
+                    .onSuccess { parseResult ->
+                      val entry = parseResult.mealEntry
+                      val isUpdate = parseResult.action.equals("UPDATE", ignoreCase = true)
+                      withContext(Dispatchers.IO) {
+                        val existing =
+                          if (isUpdate) {
+                            allMealEntities.find {
+                              it.dateIso == entry.dateIso &&
+                                it.foodName.equals(entry.foodName, ignoreCase = true)
+                            }
+                          } else {
+                            null
+                          }
+                        val entityToSave =
+                          if (existing != null) {
+                            entry.copy(id = existing.id).toMealEntity()
+                          } else {
+                            entry.toMealEntity()
+                          }
+                        mealDao.insertMeal(entityToSave)
+                      }
+                      val actionLabel = if (isUpdate) "Updated" else "Saved"
+                      Toast.makeText(
+                          this@MainActivity,
+                          "$actionLabel (${entry.dateIso}): ${entry.foodName}",
+                          Toast.LENGTH_SHORT
+                        )
+                        .show()
+                      coachAdvice = parseResult.coachAdvice
+                    }
+                    .onFailure { error ->
+                      Toast.makeText(
+                          this@MainActivity,
+                          "AI Parsing Notice: ${error.localizedMessage}",
+                          Toast.LENGTH_LONG
+                        )
+                        .show()
                     }
                 }
-            }
-        }
-
-        val todayIso = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-        val todayMeals = allMeals.filter { it.dateIso == todayIso }
-
-        val todayTotalCalories = todayMeals.sumOf { it.calories }
-        val todayTotalProtein = todayMeals.sumOf { it.proteinGrams.toDouble() }.toFloat()
-        val todayTotalCarbs = todayMeals.sumOf { it.carbsGrams.toDouble() }.toFloat()
-        val todayTotalFat = todayMeals.sumOf { it.fatGrams.toDouble() }.toFloat()
-
-        var creatineTaken by remember { mutableStateOf(true) }
-        var coachAdvice by remember { mutableStateOf("") }
-        var isLoadingAi by remember { mutableStateOf(false) }
-
-        // Aggregate Daily Summaries for Analytics
-        val weeklySummaries = remember(allMeals.size) {
-            val grouped = allMeals.groupBy { it.dateIso }
-            grouped.map { (date, meals) ->
-                DailySummary(
-                    dateIso = date,
-                    totalCalories = meals.sumOf { it.calories },
-                    targetCalories = userProfile.targetDailyCalories,
-                    totalProtein = meals.sumOf { it.proteinGrams.toDouble() }.toFloat(),
-                    targetProtein = userProfile.targetDailyProteinGrams,
-                    totalCarbs = meals.sumOf { it.carbsGrams.toDouble() }.toFloat(),
-                    totalFat = meals.sumOf { it.fatGrams.toDouble() }.toFloat(),
-                    creatineTaken = true,
-                    mealsCount = meals.size
-                )
-            }.sortedBy { it.dateIso }
-        }
-
-        Scaffold(
-            snackbarHost = { SnackbarHost(snackbarHostState) },
-            bottomBar = {
-                NavigationBar(
-                    containerColor = SurfaceDark,
-                    contentColor = PrimaryBlue
-                ) {
-                    NavigationBarItem(
-                        selected = selectedScreenIndex == 0,
-                        onClick = { selectedScreenIndex = 0 },
-                        icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
-                        label = { Text("Today") },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = Color.White,
-                            selectedTextColor = Color.White,
-                            indicatorColor = PrimaryBlue,
-                            unselectedIconColor = TextSecondary,
-                            unselectedTextColor = TextSecondary
-                        )
-                    )
-                    NavigationBarItem(
-                        selected = selectedScreenIndex == 1,
-                        onClick = { selectedScreenIndex = 1 },
-                        icon = { Icon(Icons.Default.BarChart, contentDescription = "Analytics") },
-                        label = { Text("Analytics") },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = Color.White,
-                            selectedTextColor = Color.White,
-                            indicatorColor = PrimaryBlue,
-                            unselectedIconColor = TextSecondary,
-                            unselectedTextColor = TextSecondary
-                        )
-                    )
-                    NavigationBarItem(
-                        selected = selectedScreenIndex == 2,
-                        onClick = { selectedScreenIndex = 2 },
-                        icon = { Icon(Icons.Default.History, contentDescription = "History") },
-                        label = { Text("Logs") },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = Color.White,
-                            selectedTextColor = Color.White,
-                            indicatorColor = PrimaryBlue,
-                            unselectedIconColor = TextSecondary,
-                            unselectedTextColor = TextSecondary
-                        )
-                    )
-                    NavigationBarItem(
-                        selected = selectedScreenIndex == 3,
-                        onClick = { selectedScreenIndex = 3 },
-                        icon = { Icon(Icons.Default.Person, contentDescription = "Profile") },
-                        label = { Text("Profile") },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = Color.White,
-                            selectedTextColor = Color.White,
-                            indicatorColor = PrimaryBlue,
-                            unselectedIconColor = TextSecondary,
-                            unselectedTextColor = TextSecondary
-                        )
-                    )
+              },
+              onToggleCreatine = { creatineTaken = !creatineTaken },
+              onDeleteMeal = { meal -> deleteMealWithUndo(meal) }
+            )
+          1 ->
+            AnalyticsScreen(
+              weeklySummaries = weeklySummaries,
+              allMeals = allMeals,
+              targetCalories = userProfile.targetDailyCalories,
+              maintenanceCalories = userProfile.tdeeMaintenanceCalories
+            )
+          2 ->
+            LogHistoryScreen(
+              allMeals = allMeals,
+              onDeleteMeal = { id ->
+                val target = allMeals.find { it.id == id }
+                if (target != null) {
+                  deleteMealWithUndo(target)
                 }
-            }
-        ) { innerPadding ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .background(BackgroundDark)
-            ) {
-                when (selectedScreenIndex) {
-                    0 -> HomeScreen(
-                        userProfile = userProfile,
-                        todayMeals = todayMeals,
-                        todayTotalCalories = todayTotalCalories,
-                        todayTotalProtein = todayTotalProtein,
-                        todayTotalCarbs = todayTotalCarbs,
-                        todayTotalFat = todayTotalFat,
-                        creatineTaken = creatineTaken,
-                        coachAdvice = coachAdvice,
-                        isLoadingAi = isLoadingAi,
-                        onLogMealSubmitted = { input ->
-                            isLoadingAi = true
-                            lifecycleScope.launch {
-                                val apiKey = when (userProfile.primaryAiProvider) {
-                                    "OpenAI" -> userProfile.openAiApiKey
-                                    "Claude" -> userProfile.claudeApiKey
-                                    "DeepSeek" -> userProfile.deepSeekApiKey
-                                    else -> userProfile.geminiApiKey
-                                }.trim()
-
-                                val modelName = when (userProfile.primaryAiProvider) {
-                                    "OpenAI" -> userProfile.openAiModel
-                                    "Claude" -> userProfile.claudeModel
-                                    "DeepSeek" -> userProfile.deepSeekModel
-                                    else -> userProfile.geminiModel
-                                }.trim()
-
-                                val yesterdayIso = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(
-                                    java.util.Calendar.getInstance().apply { add(java.util.Calendar.DAY_OF_YEAR, -1) }.time
-                                )
-                                val yesterdayMeals = allMeals.filter { it.dateIso == yesterdayIso }
-                                val yesterdaySummaryText = if (yesterdayMeals.isNotEmpty()) {
-                                    "Total: ${yesterdayMeals.sumOf { it.calories }} kcal, ${yesterdayMeals.sumOf { it.proteinGrams.toDouble() }}g Protein, ${yesterdayMeals.sumOf { it.carbsGrams.toDouble() }}g Carbs, ${yesterdayMeals.sumOf { it.fatGrams.toDouble() }}g Fat. Foods logged: " +
-                                    yesterdayMeals.joinToString("; ") { "${it.foodName} (${it.calories} kcal, ${it.proteinGrams}g Protein)" }
-                                } else {
-                                    "No meals logged for yesterday."
-                                }
-
-                                val todaySummaryText = if (todayMeals.isNotEmpty()) {
-                                    "Current Total: $todayTotalCalories kcal, ${todayTotalProtein}g Protein, ${todayTotalCarbs}g Carbs, ${todayTotalFat}g Fat. Foods logged: " +
-                                    todayMeals.joinToString("; ") { "${it.foodName} (${it.calories} kcal, ${it.proteinGrams}g Protein)" }
-                                } else {
-                                    "No meals logged yet today."
-                                }
-
-                                val result = aiRepository.parseMealText(
-                                    inputText = input,
-                                    provider = userProfile.primaryAiProvider,
-                                    apiKey = apiKey,
-                                    modelName = modelName,
-                                    todayContext = todaySummaryText,
-                                    yesterdayContext = yesterdaySummaryText
-                                )
-
-                                isLoadingAi = false
-                                result.onSuccess { parseResult ->
-                                    val entry = parseResult.mealEntry
-                                    withContext(Dispatchers.IO) {
-                                        val existing = allMealEntities.find {
-                                            it.dateIso == entry.dateIso && it.foodName.equals(entry.foodName, ignoreCase = true)
-                                        }
-                                        val entityToSave = if (existing != null) {
-                                            entry.copy(id = existing.id).toMealEntity()
-                                        } else {
-                                            entry.toMealEntity()
-                                        }
-                                        mealDao.insertMeal(entityToSave)
-                                    }
-                                    Toast.makeText(this@MainActivity, "Saved (${entry.dateIso}): ${entry.foodName}", Toast.LENGTH_SHORT).show()
-                                    coachAdvice = parseResult.coachAdvice
-                                }.onFailure { error ->
-                                    Toast.makeText(this@MainActivity, "AI Parsing Notice: ${error.localizedMessage}", Toast.LENGTH_LONG).show()
-                                }
-                            }
-                        },
-                        onToggleCreatine = { creatineTaken = !creatineTaken },
-                        onDeleteMeal = { meal -> deleteMealWithUndo(meal) }
-                    )
-                    1 -> AnalyticsScreen(
-                        weeklySummaries = weeklySummaries,
-                        allMeals = allMeals,
-                        targetCalories = userProfile.targetDailyCalories,
-                        maintenanceCalories = userProfile.tdeeMaintenanceCalories
-                    )
-                    2 -> LogHistoryScreen(
-                        allMeals = allMeals,
-                        onDeleteMeal = { id ->
-                            val target = allMeals.find { it.id == id }
-                            if (target != null) {
-                                deleteMealWithUndo(target)
-                            }
-                        }
-                    )
-                    3 -> ProfileScreen(
-                        userProfile = userProfile,
-                        onSaveProfile = { updated ->
-                            userProfile = updated
-                            preferencesRepository.saveUserProfile(updated)
-                            Toast.makeText(this@MainActivity, "Profile and API Keys updated!", Toast.LENGTH_SHORT).show()
-                        },
-                        onExportJson = {
-                            val file = dataExporter.exportToJson(allMeals)
-                            val msg = if (file != null) "Exported JSON to ${file.name}" else "Export failed"
-                            Toast.makeText(this@MainActivity, msg, Toast.LENGTH_LONG).show()
-                        },
-                        onExportCsv = {
-                            val file = dataExporter.exportToCsv(allMeals)
-                            val msg = if (file != null) "Exported CSV to ${file.name}" else "Export failed"
-                            Toast.makeText(this@MainActivity, msg, Toast.LENGTH_LONG).show()
-                        }
-                    )
-                }
-            }
+              }
+            )
+          3 ->
+            ProfileScreen(
+              userProfile = userProfile,
+              onSaveProfile = { updated ->
+                userProfile = updated
+                preferencesRepository.saveUserProfile(updated)
+                Toast.makeText(
+                    this@MainActivity,
+                    "Profile and API Keys updated!",
+                    Toast.LENGTH_SHORT
+                  )
+                  .show()
+              },
+              onExportJson = {
+                val file = dataExporter.exportToJson(allMeals)
+                val msg = if (file != null) "Exported JSON to ${file.name}" else "Export failed"
+                Toast.makeText(this@MainActivity, msg, Toast.LENGTH_LONG).show()
+              },
+              onExportCsv = {
+                val file = dataExporter.exportToCsv(allMeals)
+                val msg = if (file != null) "Exported CSV to ${file.name}" else "Export failed"
+                Toast.makeText(this@MainActivity, msg, Toast.LENGTH_LONG).show()
+              }
+            )
         }
+      }
     }
+  }
 }
