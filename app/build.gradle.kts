@@ -69,7 +69,10 @@ android {
     targetCompatibility = JavaVersion.VERSION_17
   }
   kotlinOptions { jvmTarget = "17" }
-  testOptions { unitTests.isReturnDefaultValues = true }
+  testOptions {
+    unitTests.isReturnDefaultValues = true
+    unitTests.isIncludeAndroidResources = true
+  }
   buildFeatures { compose = true }
   lint {
     abortOnError = true
@@ -120,8 +123,13 @@ dependencies {
   testImplementation(libs.okhttp.mockwebserver)
   testImplementation(libs.kotlinx.coroutines.test)
   testImplementation(libs.turbine)
+  testImplementation(libs.robolectric)
+  testImplementation(platform(libs.androidx.compose.bom))
+  testImplementation(libs.androidx.ui.test.junit4)
+  testImplementation(libs.androidx.test.core)
 
   debugImplementation(libs.androidx.ui.tooling)
+  debugImplementation(libs.androidx.ui.test.manifest)
 }
 
 kover {
@@ -140,6 +148,6 @@ kover {
         )
       }
     }
-    verify { rule("Minimum line coverage") { minBound(25) } }
+    verify { rule("Minimum line coverage") { minBound(60) } }
   }
 }

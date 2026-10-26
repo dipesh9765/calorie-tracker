@@ -2,13 +2,13 @@ package com.calorietracker.app.presentation.profile
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.calorietracker.app.data.exporter.DataExporter
 import com.calorietracker.app.data.local.WeightEntity
 import com.calorietracker.app.data.model.UserProfile
 import com.calorietracker.app.data.repository.WeightRepository
 import com.calorietracker.app.data.security.SecureStorageException
 import com.calorietracker.app.domain.repository.IMealRepository
 import com.calorietracker.app.domain.repository.IUserProfileRepository
+import com.calorietracker.app.domain.repository.MealExporter
 import com.calorietracker.app.presentation.UiEffect
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.File
@@ -31,7 +31,7 @@ class ProfileViewModel
 constructor(
   private val profileRepository: IUserProfileRepository,
   private val mealRepository: IMealRepository,
-  private val exporter: DataExporter,
+  private val exporter: MealExporter,
   private val weights: WeightRepository
 ) : ViewModel() {
   private val effectChannel = Channel<UiEffect>(Channel.BUFFERED)

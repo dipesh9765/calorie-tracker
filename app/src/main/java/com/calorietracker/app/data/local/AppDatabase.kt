@@ -1,6 +1,7 @@
 package com.calorietracker.app.data.local
 
 import android.content.Context
+import androidx.annotation.VisibleForTesting
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
@@ -59,6 +60,15 @@ abstract class AppDatabase : RoomDatabase() {
           )
         }
       }
+
+    /** Closes and forgets the singleton so each test starts from a fresh database. */
+    @VisibleForTesting
+    fun resetInstance() {
+      synchronized(this) {
+        INSTANCE?.close()
+        INSTANCE = null
+      }
+    }
 
     fun getInstance(context: Context): AppDatabase {
       return INSTANCE
