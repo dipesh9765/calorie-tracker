@@ -17,7 +17,7 @@ class WeightRepository @Inject constructor(private val dao: WeightDao) {
   /** Logs [weightKg] unless it equals the latest reading. Returns true if a row was added. */
   suspend fun logIfChanged(weightKg: Float): Boolean {
     val last = dao.latest(1).firstOrNull()
-    if (last != null && abs(last.weightKg - weightKg) < 0.05f) return false
+    if (last != null && abs(last.weightKg - weightKg) < SAME_WEIGHT_TOLERANCE_KG) return false
     val now = System.currentTimeMillis()
     dao.insert(
       WeightEntity(
@@ -29,9 +29,13 @@ class WeightRepository @Inject constructor(private val dao: WeightDao) {
     return true
   }
 
-  suspend fun trendSummary(): String = describeTrend(dao.latest(30))
+  suspend fun trendSummary(): String = describeTrend(dao.latest(TREND_WINDOW_READINGS))
 
   companion object {
+    /** Readings closer than this are the same weigh-in. */
+    private const val SAME_WEIGHT_TOLERANCE_KG = 0.05f
+    private const val TREND_WINDOW_READINGS = 30
+
     /** [readings] newest first. One line the dietitian can use. */
     fun describeTrend(readings: List<WeightEntity>): String {
       if (readings.isEmpty()) return "No weigh-ins logged."

@@ -86,13 +86,18 @@ object AppModule {
 
   @Provides
   @Singleton
-  fun provideAiNutritionRepository(adapters: ProviderAdapters, gson: Gson): IAiNutritionRepository =
+  fun provideAiNutritionRepository(
+    adapters: ProviderAdapters,
+    gson: Gson,
+    clock: Clock
+  ): IAiNutritionRepository =
     AiNutritionRepositoryImpl(
       geminiAdapter = adapters.gemini,
       openAiAdapter = adapters.openAi,
       claudeAdapter = adapters.claude,
       deepSeekAdapter = adapters.deepSeek,
-      gson = gson
+      gson = gson,
+      clock = clock
     )
 
   @Provides

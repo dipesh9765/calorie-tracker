@@ -1,5 +1,15 @@
 # Layered on top of detekt's defaults.
 style:
+  ThrowsCount:
+    max: 6 # response parsers name exactly which part of a provider reply is missing
+  WildcardImport:
+    active: false # Compose and JUnit APIs are conventionally star-imported; ktfmt keeps them stable.
+  LoopWithTooManyJumpStatements:
+    maxJumpCount: 3
+  MaxLineLength:
+    active: true
+    maxLineLength: 120
+    excludes: ['**/test/**', '**/ui/**', '**/DietitianPrompt.kt', '**/MealPrompts.kt']
   MagicNumber:
     active: true
     ignorePropertyDeclaration: true
@@ -7,11 +17,12 @@ style:
     ignoreAnnotation: true
     ignoreNamedArgument: true
     ignoreExtensionFunctions: true
-    excludes: ['**/test/**', '**/ui/theme/**', '**/ui/components/**', '**/ui/screens/**']
-  MaxLineLength:
-    active: true
-    maxLineLength: 120
-    excludes: ['**/test/**']
+    excludes:
+      - '**/test/**'
+      - '**/ui/**'
+      - '**/domain/usecase/GoalPlanner.kt' # published nutrition-science constants
+      - '**/domain/usecase/NutritionCalculator.kt'
+      - '**/data/remote/adapter/**' # HTTP timeouts and token limits
   ReturnCount:
     max: 4
   UnusedPrivateMember:
@@ -28,14 +39,29 @@ complexity:
     threshold: 80
     ignoreAnnotated: ['Composable']
   LongParameterList:
+    ignoreDefaultParameters: true
     functionThreshold: 8
     constructorThreshold: 8
     ignoreAnnotated: ['Composable', 'Inject', 'AssistedInject']
     excludes: ['**/test/**']
   CyclomaticComplexMethod:
     threshold: 20
+    ignoreAnnotated: ['Composable']
   TooManyFunctions:
     thresholdInFiles: 20
     thresholdInClasses: 20
     thresholdInObjects: 12
     ignoreAnnotated: ['Module']
+
+exceptions:
+  TooGenericExceptionCaught:
+    # Network and provider failures surface as RuntimeException subclasses from OkHttp/Gson; the
+    # repositories catch them at the boundary and turn them into Result.failure.
+    exceptionNames:
+      - 'ArrayIndexOutOfBoundsException'
+      - 'Error'
+      - 'Exception'
+      - 'IllegalMonitorStateException'
+      - 'IndexOutOfBoundsException'
+      - 'NullPointerException'
+      - 'Throwable'

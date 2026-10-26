@@ -35,19 +35,18 @@ internal fun OkHttpClient.postJson(
         } catch (_: Exception) {
           body.ifBlank { "HTTP ${response.code} ${response.message}" }
         }
-      throw Exception("$providerName API Error (${response.code}): $details")
+      throw ProviderResponseException("$providerName API Error (${response.code}): $details")
     }
-    if (body.isBlank()) throw Exception("Empty response received from $providerName API.")
+    if (body.isBlank())
+      throw ProviderResponseException("Empty response received from $providerName API.")
     return gson.fromJson(body, JsonObject::class.java)
   }
 }
 
 internal fun requireKey(apiKey: String, providerName: String): String {
   val key = apiKey.trim()
-  if (key.isBlank()) {
-    throw IllegalArgumentException(
-      "$providerName API Key is blank. Please enter your API key in Profile settings."
-    )
+  require(key.isNotBlank()) {
+    "$providerName API Key is blank. Please enter your API key in Profile settings."
   }
   return key
 }

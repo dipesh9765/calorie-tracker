@@ -7,10 +7,7 @@ import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
 
 /** Concrete adapter implementation for Anthropic Claude API (`claude-3-5-sonnet-20240620`). */
 class ClaudeAdapter(
@@ -20,7 +17,8 @@ class ClaudeAdapter(
       .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
       .writeTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
       .build(),
-  private val gson: Gson = Gson()
+  private val gson: Gson = Gson(),
+  private val baseUrl: String = "https://api.anthropic.com"
 ) : IAiProviderAdapter {
 
   override suspend fun parseMeal(
@@ -30,19 +28,11 @@ class ClaudeAdapter(
     modelName: String
   ): String =
     withContext(Dispatchers.IO) {
-      val cleanKey = apiKey.trim()
-      if (cleanKey.isBlank()) {
-        throw IllegalArgumentException(
-          "Claude API Key is blank. Please enter your API key in Profile settings."
-        )
-      }
-
-      val selectedModel = modelName.trim().ifBlank { "claude-3-5-sonnet-20240620" }
-      val url = "https://api.anthropic.com/v1/messages"
+      val key = requireKey(apiKey, PROVIDER)
       val payload =
         JsonObject().apply {
-          addProperty("model", selectedModel)
-          addProperty("max_tokens", 1000)
+          addProperty("model", modelName.trim().ifBlank { DEFAULT_MODEL })
+          addProperty("max_tokens", MEAL_MAX_TOKENS)
           addProperty("system", systemInstruction)
           add(
             "messages",
@@ -51,45 +41,15 @@ class ClaudeAdapter(
             )
           )
         }
-
-      val request =
-        Request.Builder()
-          .url(url)
-          .header("x-api-key", cleanKey)
-          .header("anthropic-version", "2023-06-01")
-          .post(payload.toString().toRequestBody("application/json".toMediaType()))
-          .build()
-
-      client.newCall(request).execute().use { response ->
-        val responseBody = response.body?.string() ?: ""
-
-        if (!response.isSuccessful) {
-          val errorDetails =
-            try {
-              val errObj = gson.fromJson(responseBody, JsonObject::class.java)
-              val errObjDetail = errObj.getAsJsonObject("error")
-              errObjDetail?.get("message")?.asString ?: responseBody
-            } catch (_: Exception) {
-              responseBody.ifBlank { "HTTP ${response.code} ${response.message}" }
-            }
-          throw Exception("Claude API Error (${response.code}): $errorDetails")
-        }
-
-        if (responseBody.isBlank()) {
-          throw Exception("Empty response received from Claude API.")
-        }
-
-        val resObj = gson.fromJson(responseBody, JsonObject::class.java)
-        val contentArr =
-          resObj.getAsJsonArray("content")
-            ?: throw Exception("Invalid Claude response structure: missing 'content' array.")
-
-        if (contentArr.size() == 0) {
-          throw Exception("Claude returned empty content array.")
-        }
-
-        return@withContext contentArr.get(0).asJsonObject.get("text").asString
-      }
+      client
+        .postJson(
+          "$baseUrl/v1/messages",
+          mapOf("x-api-key" to key, "anthropic-version" to ANTHROPIC_VERSION),
+          payload,
+          PROVIDER,
+          gson
+        )
+        .firstContentText(PROVIDER)
     }
 
   override suspend fun chat(
@@ -140,7 +100,7 @@ class ClaudeAdapter(
         }
       val res =
         client.postJson(
-          "https://api.anthropic.com/v1/messages",
+          "$baseUrl/v1/messages",
           mapOf("x-api-key" to key, "anthropic-version" to "2023-06-01"),
           payload,
           "Claude",
@@ -151,6 +111,13 @@ class ClaudeAdapter(
         ?.firstOrNull { it.asJsonObject.get("type")?.asString == "text" }
         ?.asJsonObject
         ?.get("text")
-        ?.asString ?: throw Exception("Claude returned no text content.")
+        ?.asString ?: throw ProviderResponseException("Claude returned no text content.")
     }
+
+  private companion object {
+    const val PROVIDER = "Claude"
+    const val DEFAULT_MODEL = "claude-3-5-sonnet-20240620"
+    const val ANTHROPIC_VERSION = "2023-06-01"
+    const val MEAL_MAX_TOKENS = 1000
+  }
 }

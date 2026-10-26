@@ -69,6 +69,7 @@ android {
     targetCompatibility = JavaVersion.VERSION_17
   }
   kotlinOptions { jvmTarget = "17" }
+  testOptions { unitTests.isReturnDefaultValues = true }
   buildFeatures { compose = true }
   lint {
     abortOnError = true
@@ -116,6 +117,9 @@ dependencies {
 
   // Testing
   testImplementation(libs.junit)
+  testImplementation(libs.okhttp.mockwebserver)
+  testImplementation(libs.kotlinx.coroutines.test)
+  testImplementation(libs.turbine)
 
   debugImplementation(libs.androidx.ui.tooling)
 }

@@ -2,11 +2,13 @@ package com.calorietracker.app.data.exporter
 
 import android.content.Context
 import android.os.Environment
+import android.util.Log
 import com.calorietracker.app.domain.model.Meal
 import com.google.gson.GsonBuilder
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.io.FileWriter
+import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -23,8 +25,8 @@ class DataExporter @Inject constructor(@ApplicationContext private val context: 
       val jsonString = gson.toJson(meals)
       FileWriter(file).use { writer -> writer.write(jsonString) }
       file
-    } catch (e: Exception) {
-      e.printStackTrace()
+    } catch (e: IOException) {
+      Log.e(TAG, "Export failed", e)
       null
     }
   }
@@ -43,8 +45,8 @@ class DataExporter @Inject constructor(@ApplicationContext private val context: 
             .append("\"${meal.id}\",")
             .append("\"${meal.dateIso}\",")
             .append("\"${meal.mealCategory}\",")
-            .append("\"${meal.foodName.replace("\"", "\"\"")}\",")
-            .append("\"${meal.portionDescription.replace("\"", "\"\"")}\",")
+            .append("${csvCell(meal.foodName)},")
+            .append("${csvCell(meal.portionDescription)},")
             .append("${meal.calories},")
             .append("${meal.proteinGrams},")
             .append("${meal.carbsGrams},")
@@ -52,9 +54,23 @@ class DataExporter @Inject constructor(@ApplicationContext private val context: 
         }
       }
       file
-    } catch (e: Exception) {
-      e.printStackTrace()
+    } catch (e: IOException) {
+      Log.e(TAG, "Export failed", e)
       null
     }
+  }
+
+  /**
+   * Quotes a CSV cell. Text that a spreadsheet would run as a formula (starts with `=`, `+`, `-` or
+   * `@`) is prefixed with an apostrophe so an AI-generated food name cannot execute anything.
+   */
+  private fun csvCell(text: String): String {
+    val safe = if (text.firstOrNull() in FORMULA_PREFIXES) "'$text" else text
+    return "\"" + safe.replace("\"", "\"\"") + "\""
+  }
+
+  private companion object {
+    const val TAG = "DataExporter"
+    val FORMULA_PREFIXES = setOf('=', '+', '-', '@', '\t', '\r')
   }
 }
