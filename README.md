@@ -1,109 +1,106 @@
-# 🥗 Calorie Tracker AI - Multi-LLM Smart Nutrition & Macro Tracker
+# CalorieTracker AI
 
-An enterprise-grade Android application built with **Kotlin**, **Jetpack Compose**, **Clean Architecture**, and **Multi-LLM AI Integration** (Google Gemini 3.6 Flash, OpenAI GPT-4o-mini, Anthropic Claude 3.5 Sonnet, and DeepSeek).
+**An offline-first Android nutrition tracker where you log meals in plain language (or with a photo) and the AI dietitian of your choice does the arithmetic. Your data stays on your phone and your API keys are encrypted with the Android Keystore.**
 
----
+[![CI](https://github.com/dipesh9765/calorie-tracker/actions/workflows/android-ci.yml/badge.svg)](https://github.com/dipesh9765/calorie-tracker/actions/workflows/android-ci.yml)
+[![Kotlin](https://img.shields.io/badge/Kotlin-2.0-7F52FF?logo=kotlin&logoColor=white)](https://kotlinlang.org/)
+[![Jetpack Compose](https://img.shields.io/badge/Jetpack%20Compose-Material%203-4285F4?logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
+[![Hilt](https://img.shields.io/badge/DI-Hilt-34A853)](https://dagger.dev/hilt/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-## 📥 Download APK
+Type *"2 rotis with dal and a scoop of whey"*, or *"yesterday night I had saoji chicken"*, or take a photo of the plate. The app resolves the date, estimates calories and macros for the portion, saves the meal, and coaches you against your own targets.
 
-| Package | Direct Download Link | Description |
-| :--- | :--- | :--- |
-| **Release APK** | [**Download app-release.apk**](https://github.com/dipesh9765/calorie-tracker/releases/latest/download/app-release.apk) | Production signed APK (~10.9 MB) |
-| **Debug APK** | [**Download app-debug.apk**](https://github.com/dipesh9765/calorie-tracker/releases/latest/download/app-debug.apk) | Development debug build (~16.6 MB) |
+## Highlights
 
-> 📌 **Note**: You can also download the latest APK directly from the [**GitHub Releases Page**](https://github.com/dipesh9765/calorie-tracker/releases).
+- **Bring your own model.** Gemini, OpenAI, Anthropic Claude or DeepSeek behind one adapter interface, each using the provider's native structured output (Gemini `responseSchema`, OpenAI strict `json_schema`) so replies are machine-readable.
+- **A dietitian that asks questions.** Chat mode asks short follow-ups when a portion, oil/ghee or brand is unclear, accepts photos (Gemini, OpenAI, Claude), and keeps long-term memory of your supplements, habits and allergies.
+- **Natural-language dates.** "Yesterday", "last night", "on Sept 8" resolve to ISO dates; the model can also *update* an earlier entry instead of duplicating it.
+- **Targets that fit you.** Mifflin-St Jeor BMR, activity level, goal pace with a safe cap and calorie floor; carbs and fat derived from your calorie and protein targets. Weight history feeds the coach as a trend.
+- **Daily habits.** Creatine and water tracking stored per day, with analytics and a day-detail view.
+- **Proactive coaching.** A WorkManager job posts a short, personalised nudge every couple of hours during the day (falls back to plain numbers when offline).
+- **Private by design.** No backend, no account, no analytics. Meals, weights and memories live in a local Room database; cloud backup and device transfer are disabled; API keys are encrypted at rest.
 
----
+## Architecture
 
-## ✨ Features
+```mermaid
+flowchart LR
+    UI[Compose screens] --> VM[ViewModels<br/>Home · History · Profile · Memory · Chat]
+    VM --> UC[Use cases<br/>LogMealWithAi · GetDailySummary]
+    VM --> Repo[Repositories<br/>Meals · DailyLog · Profile · Memory · Weight]
+    UC --> Repo
+    UC --> AI[IAiNutritionRepository]
+    AI --> Adapters[Provider adapters<br/>Gemini · OpenAI · Claude · DeepSeek]
+    Adapters --> Cloud[(LLM APIs)]
+    Repo --> Room[(Room / SQLite)]
+    Repo --> Secrets[AES-GCM + Android Keystore]
+    Worker[WorkManager coach] --> AI
+    Worker --> Repo
+```
 
-- 🤖 **Multi-LLM AI Engine**:
-  - **Google Gemini** (`gemini-3.6-flash` / `gemini-3.5-flash`) with native `responseSchema` JSON enforcement.
-  - **OpenAI** (`gpt-4o-mini`) with `json_schema` strict mode.
-  - **Anthropic Claude** (`claude-3-5-sonnet-20240620`).
-  - **DeepSeek** (`deepseek-chat`) with `json_object` mode.
-- 🧑‍⚕️ **AI Dietitian Chat**:
-  - A conversation, not a one-shot parser: if a portion, oil/ghee, brand or hidden ingredient is unclear, the dietitian asks short follow-up questions and keeps refining until it can give a confident estimate, which you then save to your log.
-  - **Photos**: take a picture with the camera or pick one from the gallery for a calorie estimate (Gemini, OpenAI and Claude; DeepSeek is text-only).
-  - **Shortcuts**: one-tap "How am I doing today?", "What should I eat next?", "Review my week" and "I weighed in today". Tell it your weight in chat and it logs it and refreshes your targets.
-  - **Memory**: it remembers your supplements (e.g. exact protein powder and scoop size), habits, allergies and preferences, and uses them in chat, quick-log and notifications. Say "I switched to a 40 g scoop" and it updates the memory. View, add, edit or delete memories from the 🧠 button in the chat header.
-- 🎯 **Your profile, your targets**: enter age, height, weight, goal (lose / maintain / gain), pace, activity level, cuisine and diet type. Daily calories, protein and water are generated (Mifflin-St Jeor with a safe-pace cap and calorie floor) and recalculated whenever you update your details, or set them by hand. Weight changes are kept as a history and fed to the dietitian as a trend.
-- 🕒 **Past-Day & Relative Date Logging**:
-  - Automatically parses natural language expressions like *"yesterday night I ate 2 rotis with egg curry"* or *"on Sept 8 I had saoji chicken"*.
-  - Automatically resolves relative date references to past ISO dates (`YYYY-MM-DD`).
-  - Supports both **CREATE** and **UPDATE** actions for past days.
-- 🏷️ **Brand & Packaged Product Nutrition Estimation**:
-  - Accurately references official package nutrition labels and scales macros pro-rata for commercial products (e.g. *Nakpro Perform Whey*, *Amul High Protein Lassi*, *Haldiram's Poha*, *Subway*, *Epigamia Greek Yogurt*).
-- 📊 **Interactive Day Details Modal**:
-  - Tap any past date or summary card on the Analytics or History screens to view itemized food breakdowns, macro splits (Protein, Carbs, Fat), and total calorie deficit/surplus indicators.
-- 🎨 **Modern Design & 3D Launcher Icon**:
-  - Sleek dark theme with liquid bubble progress indicators, custom macro breakdown bars, dynamic glassmorphic cards, and a custom 3D app icon.
-- 🛡️ **Network & Parsing Resilience**:
-  - 60-second connection & read timeouts eliminating `SocketTimeoutException`.
-  - Type-safe primitive parsing protecting against floating-point/string conversion issues.
-
----
-
-## 🏗️ Architecture
-
-The app follows **Android Clean Architecture** principles with distinct layers:
+Unidirectional data flow: each screen collects one immutable `UiState` from its ViewModel and sends events back; one-shot messages (toasts, undo snackbars) are separate `UiEffect`s. Dependencies are wired with Hilt; time comes from an injected `Clock`. Details and the reasoning behind the main choices are in [ARCHITECTURE.md](ARCHITECTURE.md) and [docs/adr](docs/adr).
 
 ```
 app/src/main/java/com/calorietracker/app/
+├── di/             Hilt modules (database, HTTP, adapters, repository bindings)
+├── domain/         Meal, DailyLog, repository interfaces, use cases, GoalPlanner (no Android deps)
 ├── data/
-│   ├── model/         # Data entities (UserProfile, MealEntry, DailySummary)
-│   ├── remote/        # HTTP API Adapters (Gemini, OpenAI, Claude, DeepSeek)
-│   └── repository/    # IAiNutritionRepository & IMealRepository implementations
-├── domain/
-│   ├── model/         # Domain models (Meal, DailyNutritionSummary, AiProviderType)
-│   ├── repository/    # Domain repository interfaces
-│   └── usecase/       # Business logic (LogMealWithAiUseCase, GetDailyNutritionSummaryUseCase)
-├── presentation/
-│   └── home/          # HomeViewModel & Unidirectional Data Flow (UDF) UiState
-└── ui/
-    ├── components/    # Reusable Compose components (DayDetailsDialog, MacroBar, LiquidBubble)
-    ├── screens/       # HomeScreen, AnalyticsScreen, LogHistoryScreen, ProfileScreen
-    └── theme/         # App Colors, Typography, and Material 3 Theme
+│   ├── local/      Room entities, DAOs, migrations (schemas exported to app/schemas)
+│   ├── remote/     Provider adapters + shared HTTP/schema helpers
+│   ├── repository/ Room-backed repositories, AI repository, prompts
+│   └── security/   AES-GCM cipher + Keystore key provider
+├── presentation/   ViewModels and UI state
+├── notification/   Coach worker, scheduler, notification helper
+└── ui/             Compose screens, components, theme, app root
 ```
 
----
+## Engineering quality
 
-## 🧪 Testing Kit
+| Area | What is in place |
+| :-- | :-- |
+| Tests | 149 JVM unit tests: use cases, ViewModels (Turbine), Room DAOs and **migrations v1→v4** on SQLite (Robolectric), per-provider **wire contracts** against MockWebServer, cipher and key-storage behaviour, and a smoke test that boots the real app with the real Hilt graph |
+| Coverage | Kover, 71.6% line coverage of non-UI code, 60% enforced in CI |
+| Static analysis | ktfmt (Spotless), detekt (near-empty baseline), Android Lint with `abortOnError` |
+| Security | Keys encrypted with AES-256-GCM (Keystore-held key), cleartext traffic off, backup off, keys redacted from `toString`, CSV export neutralises spreadsheet formulas. See [SECURITY.md](SECURITY.md) |
+| Release | R8 minify + resource shrinking, tag-triggered signed release workflow, no auto-publishing from `main` |
 
-The project includes an automated test kit under `app/src/test/java/com/calorietracker/app/`:
+## Getting started
 
-1. **`AiAdapterTest.kt`**: Validates JSON string extraction, markdown wrapper stripping, and mock adapter responses.
-2. **`StructuredOutputTest.kt`**: Validates native API JSON schemas (Gemini `responseSchema`, OpenAI `json_schema`), string primitive conversion, and numeric type coercion.
-3. **`NetworkTimeoutTest.kt`**: Tests 60s network timeout error mapping and offline network recovery guidance.
+Requirements: JDK 17, Android SDK 36 (min SDK 26, target 35), a current Android Studio (AGP 8.13).
 
-### Run Automated Tests
 ```bash
-./gradlew test
+git clone https://github.com/dipesh9765/calorie-tracker.git
+cd calorie-tracker
+echo "sdk.dir=/path/to/Android/Sdk" > local.properties   # Android Studio does this for you
+./gradlew assembleDebug                                   # app/build/outputs/apk/debug
 ```
 
----
+Open the app, go to **Profile**, pick a provider and paste your API key (stored encrypted on the device), then fill in your details to generate targets.
 
-## 🚀 Building & Running
+### Commands
 
-### Prerequisites
-- Android Studio Ladybug / Jellyfish or Gradle 8.13+
-- JDK 17 or JDK 21
-- Android SDK 35 (Target SDK 35, Min SDK 26)
+| Command | What it does |
+| :-- | :-- |
+| `./gradlew testDebugUnitTest` | Run all unit tests |
+| `./gradlew koverHtmlReportDebug` | Coverage report in `app/build/reports/kover` |
+| `./gradlew spotlessApply` | Format the code |
+| `./gradlew detekt lintDebug` | Static analysis |
+| `./gradlew assembleRelease` | Minified release APK (signed only if a keystore is configured) |
 
-### Build Debug APK
-```bash
-./gradlew assembleDebug
-```
-Output: `app/build/outputs/apk/debug/app-debug.apk`
+### Signed releases
 
-### Build Release APK
-```bash
-./gradlew assembleRelease
-```
-Output: `app/build/outputs/apk/release/app-release.apk`
+Push a version tag (`git tag v1.1.0 && git push origin v1.1.0`) and the [release workflow](.github/workflows/release.yml) builds the APK and attaches it to a GitHub release. To sign it, add the repository secrets `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS` and `KEY_PASSWORD`. Without them the APK is built unsigned.
 
----
+## Privacy
 
-## 📄 License
+Meal text, photos you attach in chat, and the context needed for a good answer (today's totals, your targets, remembered facts) are sent to the AI provider **you** choose, using **your** key. Nothing is sent anywhere else. See [PRIVACY.md](PRIVACY.md).
 
-Distributed under the MIT License. See `LICENSE` for more information.
+## Known limitations
+
+- Calorie and macro values are model estimates, not medical advice.
+- No iOS or web client, and no cloud sync by design.
+- Instrumented tests (real device Keystore, camera and photo picker, notification permission) are not part of CI yet; those paths are covered up to what Robolectric emulates.
+- The Today screen follows the date at launch; leaving the app open across midnight shows the previous day until it is reopened.
+
+## Contributing and license
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). Released under the [MIT License](LICENSE).
