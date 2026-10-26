@@ -14,7 +14,7 @@ object NotificationHelper {
   const val CHANNEL_ID = "ai_coach_channel"
   private const val CHANNEL_NAME = "CalorieTracker AI Coach"
   private const val CHANNEL_DESC =
-    "Real-time intelligent AI nutrition recommendations personalized for Dipesh"
+    "Real-time intelligent AI nutrition recommendations personalized for you"
   const val NOTIFICATION_ID = 1001
 
   fun createNotificationChannel(context: Context) {

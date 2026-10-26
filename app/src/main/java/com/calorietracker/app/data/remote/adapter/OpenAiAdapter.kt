@@ -1,6 +1,9 @@
 package com.calorietracker.app.data.remote.adapter
 
+import com.calorietracker.app.domain.model.ChatRole
+import com.calorietracker.app.domain.model.ChatTurn
 import com.google.gson.Gson
+import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -149,5 +152,72 @@ class OpenAiAdapter(
           .get("content")
           .asString
       }
+    }
+
+  override suspend fun chat(
+    turns: List<ChatTurn>,
+    apiKey: String,
+    systemInstruction: String,
+    modelName: String
+  ): String =
+    withContext(Dispatchers.IO) {
+      val key = requireKey(apiKey, "OpenAI")
+      val messages = JsonArray()
+      messages.add(
+        JsonObject().apply {
+          addProperty("role", "system")
+          addProperty("content", systemInstruction)
+        }
+      )
+      turns.forEach { turn ->
+        messages.add(
+          JsonObject().apply {
+            addProperty("role", if (turn.role == ChatRole.USER) "user" else "assistant")
+            val img = turn.image
+            if (img == null) {
+              addProperty("content", turn.text)
+            } else {
+              add(
+                "content",
+                JsonArray().apply {
+                  add(JsonObject().apply { addProperty("type", "text"); addProperty("text", turn.text) })
+                  add(
+                    JsonObject().apply {
+                      addProperty("type", "image_url")
+                      add(
+                        "image_url",
+                        JsonObject().apply {
+                          addProperty("url", "data:${img.mimeType};base64,${img.base64}")
+                        }
+                      )
+                    }
+                  )
+                }
+              )
+            }
+          }
+        )
+      }
+      val payload =
+        JsonObject().apply {
+          addProperty("model", modelName.trim().ifBlank { "gpt-4o-mini" })
+          add("response_format", JsonObject().apply { addProperty("type", "json_object") })
+          add("messages", messages)
+        }
+      val res =
+        client.postJson(
+          "https://api.openai.com/v1/chat/completions",
+          mapOf("Authorization" to "Bearer $key"),
+          payload,
+          "OpenAI",
+          gson
+        )
+      res
+        .getAsJsonArray("choices")
+        ?.firstOrNull()
+        ?.asJsonObject
+        ?.getAsJsonObject("message")
+        ?.get("content")
+        ?.asString ?: throw Exception("OpenAI returned no content.")
     }
 }

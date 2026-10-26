@@ -1,6 +1,7 @@
 package com.calorietracker.app.data.repository
 
 import com.calorietracker.app.data.model.MealEntry
+import com.calorietracker.app.data.model.UserProfile
 import com.calorietracker.app.domain.model.AiProviderType
 import com.calorietracker.app.domain.repository.IAiNutritionRepository
 import kotlinx.coroutines.Dispatchers
@@ -20,7 +21,9 @@ class AiRepository(
     apiKey: String,
     modelName: String = "",
     todayContext: String = "",
-    yesterdayContext: String = ""
+    yesterdayContext: String = "",
+    memoryContext: String = "",
+    profile: UserProfile = UserProfile()
   ): Result<MealParseResult> =
     withContext(Dispatchers.IO) {
       val providerType = AiProviderType.fromString(provider)
@@ -31,7 +34,9 @@ class AiRepository(
           apiKey = apiKey,
           modelName = modelName,
           todayContext = todayContext,
-          yesterdayContext = yesterdayContext
+          yesterdayContext = yesterdayContext,
+          memoryContext = memoryContext,
+          profile = profile
         )
 
       result.fold(

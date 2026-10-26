@@ -26,7 +26,12 @@ import com.calorietracker.app.ui.theme.SurfaceDark
 import com.calorietracker.app.ui.theme.TextSecondary
 
 @Composable
-fun LogHistoryScreen(allMeals: List<MealEntry>, onDeleteMeal: (String) -> Unit) {
+fun LogHistoryScreen(
+  allMeals: List<MealEntry>,
+  targetCalories: Int,
+  targetProtein: Float,
+  onDeleteMeal: (String) -> Unit
+) {
   var selectedSummaryForDialog by remember { mutableStateOf<DailySummary?>(null) }
   var mealPendingDelete by remember { mutableStateOf<MealEntry?>(null) }
 
@@ -106,9 +111,9 @@ fun LogHistoryScreen(allMeals: List<MealEntry>, onDeleteMeal: (String) -> Unit) 
                         DailySummary(
                           dateIso = meal.dateIso,
                           totalCalories = dayMeals.sumOf { it.calories },
-                          targetCalories = 2300,
+                          targetCalories = targetCalories,
                           totalProtein = dayMeals.sumOf { it.proteinGrams.toDouble() }.toFloat(),
-                          targetProtein = 180f,
+                          targetProtein = targetProtein,
                           totalCarbs = dayMeals.sumOf { it.carbsGrams.toDouble() }.toFloat(),
                           totalFat = dayMeals.sumOf { it.fatGrams.toDouble() }.toFloat(),
                           creatineTaken = true,

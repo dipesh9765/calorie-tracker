@@ -1,5 +1,6 @@
 package com.calorietracker.app
 
+import com.calorietracker.app.data.model.UserProfile
 import com.calorietracker.app.domain.model.AiProviderType
 import com.calorietracker.app.domain.model.Meal
 import com.calorietracker.app.domain.repository.IAiNutritionRepository
@@ -67,7 +68,9 @@ class UseCasesTest {
       apiKey: String,
       modelName: String,
       todayContext: String,
-      yesterdayContext: String
+      yesterdayContext: String,
+      memoryContext: String,
+      profile: UserProfile
     ): Result<Pair<Meal, String>> {
       capturedInputText = mealText
       capturedProvider = provider
@@ -83,7 +86,9 @@ class UseCasesTest {
       todayContext: String,
       yesterdayContext: String,
       targetCalories: Int,
-      targetProtein: Float
+      targetProtein: Float,
+      memoryContext: String,
+      cuisine: String
     ): Result<String> {
       return Result.success("Sample advice")
     }

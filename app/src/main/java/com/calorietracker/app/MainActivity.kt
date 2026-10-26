@@ -8,11 +8,19 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
+import android.net.Uri
+import androidx.core.content.FileProvider
+import androidx.compose.runtime.saveable.rememberSaveable
+import com.calorietracker.app.data.repository.WeightRepository
+import java.io.File
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
@@ -30,7 +38,10 @@ import com.calorietracker.app.data.local.toMealEntity
 import com.calorietracker.app.data.local.toMealEntry
 import com.calorietracker.app.data.model.DailySummary
 import com.calorietracker.app.data.model.MealEntry
+import com.calorietracker.app.data.model.UserProfile
 import com.calorietracker.app.data.repository.AiRepository
+import com.calorietracker.app.data.repository.MemoryRepository
+import com.calorietracker.app.presentation.DietitianChatViewModel
 import com.calorietracker.app.data.repository.PreferencesRepository
 import com.calorietracker.app.notification.NotificationHelper
 import com.calorietracker.app.notification.NotificationScheduler
@@ -55,6 +66,9 @@ class MainActivity : ComponentActivity() {
   private lateinit var preferencesRepository: PreferencesRepository
   private lateinit var database: AppDatabase
   private lateinit var mealDao: MealDao
+  private lateinit var memoryRepository: MemoryRepository
+  private lateinit var weightRepository: WeightRepository
+  private val chatViewModel: DietitianChatViewModel by viewModels()
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
@@ -62,6 +76,8 @@ class MainActivity : ComponentActivity() {
     preferencesRepository = PreferencesRepository(this)
     database = AppDatabase.getInstance(this)
     mealDao = database.mealDao()
+    memoryRepository = MemoryRepository(database.memoryDao())
+    weightRepository = WeightRepository(database.weightDao())
 
     NotificationHelper.createNotificationChannel(this)
     NotificationScheduler.schedulePeriodicCoachNotifications(this)
@@ -69,9 +85,18 @@ class MainActivity : ComponentActivity() {
     setContent { CalorieTrackerTheme { MainAppContainer() } }
   }
 
+  private fun activeApiKey(p: UserProfile): String =
+    when (p.primaryAiProvider) {
+      "OpenAI" -> p.openAiApiKey
+      "Claude" -> p.claudeApiKey
+      "DeepSeek" -> p.deepSeekApiKey
+      else -> p.geminiApiKey
+    }.trim()
+
   @Composable
   fun MainAppContainer() {
     var selectedScreenIndex by remember { mutableIntStateOf(0) }
+    var showMemory by remember { mutableStateOf(false) }
     var userProfile by remember { mutableStateOf(preferencesRepository.getUserProfile()) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -95,62 +120,44 @@ class MainActivity : ComponentActivity() {
       }
     }
 
+    val photoPicker =
+      rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) chatViewModel.attachImage(uri)
+      }
+    // The camera app can outlive our process, so the target Uri must survive recreation.
+    var cameraUri by rememberSaveable { mutableStateOf<Uri?>(null) }
+    val takePicture =
+      rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { saved ->
+        val uri = cameraUri
+        if (saved && uri != null) chatViewModel.attachImage(uri)
+        cameraUri = null
+      }
+    fun launchCamera() {
+      val dir = File(cacheDir, "camera").apply { mkdirs() }
+      dir.listFiles()?.forEach { it.delete() } // drop photos from earlier sessions
+      val file = File.createTempFile("meal_", ".jpg", dir)
+      val uri = FileProvider.getUriForFile(this@MainActivity, "$packageName.fileprovider", file)
+      cameraUri = uri
+      takePicture.launch(uri)
+    }
+
+    val profileVersion by chatViewModel.profileVersion.collectAsState()
+    LaunchedEffect(profileVersion) {
+      // The chat can update weight and targets; pick those up.
+      if (profileVersion > 0) userProfile = preferencesRepository.getUserProfile()
+    }
+    val weightHistory by
+      remember { weightRepository.observeAll() }.collectAsState(initial = emptyList())
+
+    val chatMessages by chatViewModel.messages.collectAsState()
+    val chatLoading by chatViewModel.isLoading.collectAsState()
+    val chatPendingImage by chatViewModel.pendingImage.collectAsState()
+    val memories by
+      remember { memoryRepository.observeAll() }.collectAsState(initial = emptyList())
+
     // Collect all meals reactively from Room SQLite database
     val allMealEntities by mealDao.getAllMeals().collectAsState(initial = emptyList())
     val allMeals = remember(allMealEntities) { allMealEntities.map { it.toMealEntry() } }
-
-    // Seed initial historical sample data into Room SQLite if database is empty
-    LaunchedEffect(Unit) {
-      withContext(Dispatchers.IO) {
-        val existing = mealDao.getAllMeals().first()
-        if (existing.isEmpty()) {
-          val seedData =
-            listOf(
-              MealEntity(
-                dateIso = "2026-09-07",
-                foodName = "Haldiram Bread, Saoji Gravy, Eggs, Tarri Poha",
-                portionDescription = "Daily food log",
-                calories = 1685,
-                proteinGrams = 110.5f,
-                carbsGrams = 175f,
-                fatGrams = 48f,
-                mealCategory = "Day Log"
-              ),
-              MealEntity(
-                dateIso = "2026-09-08",
-                foodName = "Rotis, Chicken Dry/Curry, Nakpro Whey, Sabudana Khichdi",
-                portionDescription = "Daily food log",
-                calories = 2302,
-                proteinGrams = 154.5f,
-                carbsGrams = 220f,
-                fatGrams = 62f,
-                mealCategory = "Day Log"
-              ),
-              MealEntity(
-                dateIso = "2026-09-09",
-                foodName = "3 Rotis, Dahi Samosa, 200g Chicken, Nakpro Whey",
-                portionDescription = "Daily food log",
-                calories = 1945,
-                proteinGrams = 147.5f,
-                carbsGrams = 195f,
-                fatGrams = 55f,
-                mealCategory = "Day Log"
-              ),
-              MealEntity(
-                dateIso = "2026-09-10",
-                foodName = "3 Rotis, Chicken Curry, 2 scoops Nakpro Whey, Eggs",
-                portionDescription = "Daily food log",
-                calories = 2615,
-                proteinGrams = 192.0f,
-                carbsGrams = 230f,
-                fatGrams = 70f,
-                mealCategory = "Day Log"
-              )
-            )
-          mealDao.insertAll(seedData)
-        }
-      }
-    }
 
     fun deleteMealWithUndo(meal: MealEntry) {
       scope.launch {
@@ -181,7 +188,7 @@ class MainActivity : ComponentActivity() {
 
     // Aggregate Daily Summaries for Analytics
     val weeklySummaries =
-      remember(allMeals.size) {
+      remember(allMeals, userProfile.targetDailyCalories, userProfile.targetDailyProteinGrams) {
         val grouped = allMeals.groupBy { it.dateIso }
         grouped
           .map { (date, meals) ->
@@ -221,8 +228,8 @@ class MainActivity : ComponentActivity() {
           NavigationBarItem(
             selected = selectedScreenIndex == 1,
             onClick = { selectedScreenIndex = 1 },
-            icon = { Icon(Icons.Default.BarChart, contentDescription = "Analytics") },
-            label = { Text("Analytics") },
+            icon = { Icon(Icons.Default.Chat, contentDescription = "Dietitian") },
+            label = { Text("Dietitian") },
             colors =
               NavigationBarItemDefaults.colors(
                 selectedIconColor = Color.White,
@@ -235,8 +242,8 @@ class MainActivity : ComponentActivity() {
           NavigationBarItem(
             selected = selectedScreenIndex == 2,
             onClick = { selectedScreenIndex = 2 },
-            icon = { Icon(Icons.Default.History, contentDescription = "History") },
-            label = { Text("Logs") },
+            icon = { Icon(Icons.Default.BarChart, contentDescription = "Analytics") },
+            label = { Text("Analytics") },
             colors =
               NavigationBarItemDefaults.colors(
                 selectedIconColor = Color.White,
@@ -249,6 +256,20 @@ class MainActivity : ComponentActivity() {
           NavigationBarItem(
             selected = selectedScreenIndex == 3,
             onClick = { selectedScreenIndex = 3 },
+            icon = { Icon(Icons.Default.History, contentDescription = "History") },
+            label = { Text("Logs") },
+            colors =
+              NavigationBarItemDefaults.colors(
+                selectedIconColor = Color.White,
+                selectedTextColor = Color.White,
+                indicatorColor = PrimaryBlue,
+                unselectedIconColor = TextSecondary,
+                unselectedTextColor = TextSecondary
+              )
+          )
+          NavigationBarItem(
+            selected = selectedScreenIndex == 4,
+            onClick = { selectedScreenIndex = 4 },
             icon = { Icon(Icons.Default.Person, contentDescription = "Profile") },
             label = { Text("Profile") },
             colors =
@@ -330,7 +351,13 @@ class MainActivity : ComponentActivity() {
                       apiKey = apiKey,
                       modelName = modelName,
                       todayContext = todaySummaryText,
-                      yesterdayContext = yesterdaySummaryText
+                      yesterdayContext = yesterdaySummaryText,
+                      profile = userProfile,
+                      memoryContext =
+                        MemoryRepository.formatForPrompt(
+                          withContext(Dispatchers.IO) { memoryRepository.getAll() },
+                          emptyText = ""
+                        )
                     )
 
                   isLoadingAi = false
@@ -379,15 +406,58 @@ class MainActivity : ComponentActivity() {
               onDeleteMeal = { meal -> deleteMealWithUndo(meal) }
             )
           1 ->
+            if (showMemory) {
+              MemoryScreen(
+                memories = memories,
+                onAdd = { category, content ->
+                  scope.launch(Dispatchers.IO) { memoryRepository.add(category, content) }
+                },
+                onEdit = { id, category, content ->
+                  scope.launch(Dispatchers.IO) { memoryRepository.edit(id, category, content) }
+                },
+                onDelete = { id -> scope.launch(Dispatchers.IO) { memoryRepository.delete(id) } },
+                onBack = { showMemory = false }
+              )
+            } else {
+              DietitianChatScreen(
+                messages = chatMessages,
+                isLoading = chatLoading,
+                pendingImage = chatPendingImage,
+                userName = userProfile.displayName,
+                setupHint =
+                  when {
+                    activeApiKey(userProfile).isBlank() ->
+                      "Add your ${userProfile.primaryAiProvider} API key in Profile to start chatting. Tap here."
+                    !userProfile.profileConfigured ->
+                      "Set up your profile for accurate calorie and protein targets. Tap here."
+                    else -> null
+                  },
+                onSetupClick = { selectedScreenIndex = 4 },
+                onSend = chatViewModel::send,
+                onTakePhoto = ::launchCamera,
+                onPickFromGallery = {
+                  photoPicker.launch(
+                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                  )
+                },
+                onClearImage = chatViewModel::clearImage,
+                onSaveMeal = chatViewModel::saveMeal,
+                onOpenMemory = { showMemory = true },
+                onNewChat = chatViewModel::newChat
+              )
+            }
+          2 ->
             AnalyticsScreen(
               weeklySummaries = weeklySummaries,
               allMeals = allMeals,
               targetCalories = userProfile.targetDailyCalories,
               maintenanceCalories = userProfile.tdeeMaintenanceCalories
             )
-          2 ->
+          3 ->
             LogHistoryScreen(
               allMeals = allMeals,
+              targetCalories = userProfile.targetDailyCalories,
+              targetProtein = userProfile.targetDailyProteinGrams,
               onDeleteMeal = { id ->
                 val target = allMeals.find { it.id == id }
                 if (target != null) {
@@ -395,18 +465,17 @@ class MainActivity : ComponentActivity() {
                 }
               }
             )
-          3 ->
+          4 ->
             ProfileScreen(
               userProfile = userProfile,
+              weightHistory = weightHistory,
               onSaveProfile = { updated ->
                 userProfile = updated
                 preferencesRepository.saveUserProfile(updated)
-                Toast.makeText(
-                    this@MainActivity,
-                    "Profile and API Keys updated!",
-                    Toast.LENGTH_SHORT
-                  )
-                  .show()
+                if (updated.profileConfigured) {
+                  scope.launch(Dispatchers.IO) { weightRepository.logIfChanged(updated.weightKg) }
+                }
+                Toast.makeText(this@MainActivity, "Profile saved", Toast.LENGTH_SHORT).show()
               },
               onExportJson = {
                 val file = dataExporter.exportToJson(allMeals)

@@ -1,5 +1,7 @@
 package com.calorietracker.app.data.remote.adapter
 
+import com.calorietracker.app.domain.model.ChatTurn
+
 /**
  * Adapter interface defining the technical API contract for multi-LLM provider backends.
  *
@@ -23,4 +25,17 @@ interface IAiProviderAdapter {
     systemInstruction: String,
     modelName: String = ""
   ): String
+
+  /**
+   * Multi-turn conversation, optionally with images on user turns. The model is instructed (via
+   * [systemInstruction]) to answer with a single JSON object.
+   *
+   * @return Raw text emitted by the model.
+   */
+  suspend fun chat(
+    turns: List<ChatTurn>,
+    apiKey: String,
+    systemInstruction: String,
+    modelName: String = ""
+  ): String = throw UnsupportedOperationException("Chat is not supported by this provider.")
 }

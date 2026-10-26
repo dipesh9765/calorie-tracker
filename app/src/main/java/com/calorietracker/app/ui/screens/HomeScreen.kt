@@ -72,14 +72,14 @@ fun HomeScreen(
       ) {
         Column {
           Text(
-            text = "Hello, ${userProfile.name}",
+            text = "Hello, ${userProfile.displayName}",
             color = Color.White,
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold
           )
           Text(
             text =
-              "Goal: ${userProfile.weightKg.toInt()}kg → ${userProfile.targetWeightKg.toInt()}kg (2,300 kcal)",
+              "Goal: ${userProfile.weightKg.toInt()}kg → ${userProfile.targetWeightKg.toInt()}kg (${userProfile.targetDailyCalories} kcal)",
             color = TextSecondary,
             fontSize = 13.sp
           )
@@ -125,7 +125,7 @@ fun HomeScreen(
       }
     }
 
-    // Macro Cards Row (Protein 180g, Carbs, Fat)
+    // Macro Cards Row (Protein, Carbs, Fat)
     item {
       Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         MacroCard(
@@ -179,7 +179,7 @@ fun HomeScreen(
                 coachAdvice.ifEmpty {
                   val remainingP =
                     (userProfile.targetDailyProteinGrams - todayTotalProtein).coerceAtLeast(0f)
-                  "You need ${remainingP.toInt()}g more protein to hit your 180g target today. Suggest 1.5 scoops Nakpro Whey or 150g dry chicken breast."
+                  "You need ${remainingP.toInt()}g more protein to hit your ${userProfile.targetDailyProteinGrams.toInt()}g target today. Ask your dietitian for ideas that fit the rest of your day."
                 },
               color = TextSecondary,
               fontSize = 13.sp,
@@ -207,7 +207,7 @@ fun HomeScreen(
             onValueChange = { mealInputText = it },
             placeholder = {
               Text(
-                "e.g. 2 rotis with 200g chicken curry & 1 scoop Nakpro whey",
+                "e.g. 2 rotis with dal and sabzi",
                 color = TextSecondary,
                 fontSize = 13.sp
               )

@@ -27,8 +27,8 @@ import com.calorietracker.app.ui.theme.*
 fun AnalyticsScreen(
   weeklySummaries: List<DailySummary>,
   allMeals: List<MealEntry> = emptyList(),
-  targetCalories: Int = 2300,
-  maintenanceCalories: Int = 2900
+  targetCalories: Int = 2000,
+  maintenanceCalories: Int = 2400
 ) {
   var selectedTab by remember { mutableIntStateOf(0) } // 0 = Week, 1 = Month
   var selectedSummaryForDialog by remember { mutableStateOf<DailySummary?>(null) }
@@ -96,7 +96,7 @@ fun AnalyticsScreen(
         Column(modifier = Modifier.padding(16.dp)) {
           Text(
             text =
-              if (selectedTab == 0) "Daily Calories vs Target (2,300 kcal)"
+              if (selectedTab == 0) "Daily Calories vs Target ($targetCalories kcal)"
               else "Monthly Intake Consistency",
             color = Color.White,
             fontSize = 16.sp,
@@ -110,10 +110,15 @@ fun AnalyticsScreen(
             Canvas(modifier = Modifier.fillMaxSize()) {
               val width = size.width
               val height = size.height
-              val maxCal = 3200f
+              val maxCal =
+                maxOf(
+                  3200f,
+                  maintenanceCalories * 1.15f,
+                  (weeklySummaries.maxOfOrNull { it.totalCalories } ?: 0) * 1.1f
+                )
               val barWidth = width / (weeklySummaries.size * 2f).coerceAtLeast(1f)
 
-              // Draw Target Deficit Line (2,300 kcal)
+              // Draw daily target line
               val targetY = height - (targetCalories / maxCal * height)
               drawLine(
                 color = AccentEmerald,
@@ -122,7 +127,7 @@ fun AnalyticsScreen(
                 strokeWidth = 2.dp.toPx()
               )
 
-              // Draw Maintenance Line (2,900 kcal)
+              // Draw maintenance line
               val maintY = height - (maintenanceCalories / maxCal * height)
               drawLine(
                 color = AccentOrange.copy(alpha = 0.5f),
@@ -187,12 +192,12 @@ fun AnalyticsScreen(
             Row(verticalAlignment = Alignment.CenterVertically) {
               Box(modifier = Modifier.size(10.dp).background(AccentEmerald))
               Spacer(modifier = Modifier.width(4.dp))
-              Text("Target (2,300)", color = TextSecondary, fontSize = 11.sp)
+              Text("Target ($targetCalories)", color = TextSecondary, fontSize = 11.sp)
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
               Box(modifier = Modifier.size(10.dp).background(AccentOrange))
               Spacer(modifier = Modifier.width(4.dp))
-              Text("Maintenance (2,900)", color = TextSecondary, fontSize = 11.sp)
+              Text("Maintenance ($maintenanceCalories)", color = TextSecondary, fontSize = 11.sp)
             }
           }
         }
@@ -253,12 +258,12 @@ fun AnalyticsScreen(
           }
           Column(horizontalAlignment = Alignment.End) {
             Text(
-              text = "${summary.totalCalories} / 2,300 kcal",
-              color = if (summary.totalCalories <= 2300) AccentEmerald else AccentOrange,
+              text = "${summary.totalCalories} / ${summary.targetCalories} kcal",
+              color = if (summary.totalCalories <= summary.targetCalories) AccentEmerald else AccentOrange,
               fontSize = 14.sp,
               fontWeight = FontWeight.Bold
             )
-            val status = if (summary.totalCalories <= 2300) "In Deficit" else "Over Budget"
+            val status = if (summary.totalCalories <= summary.targetCalories) "Within target" else "Over target"
             Text(text = status, color = TextSecondary, fontSize = 11.sp)
           }
         }

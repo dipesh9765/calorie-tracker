@@ -1,6 +1,9 @@
 package com.calorietracker.app.data.remote.adapter
 
+import com.calorietracker.app.domain.model.ChatRole
+import com.calorietracker.app.domain.model.ChatTurn
 import com.google.gson.Gson
+import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -93,5 +96,56 @@ class DeepSeekAdapter(
           .get("content")
           .asString
       }
+    }
+
+  override suspend fun chat(
+    turns: List<ChatTurn>,
+    apiKey: String,
+    systemInstruction: String,
+    modelName: String
+  ): String =
+    withContext(Dispatchers.IO) {
+      val key = requireKey(apiKey, "DeepSeek")
+      if (turns.any { it.image != null }) {
+        throw IllegalArgumentException(
+          "DeepSeek can't read images. Switch to Gemini, OpenAI or Claude in Profile to send photos."
+        )
+      }
+      val messages = JsonArray()
+      messages.add(
+        JsonObject().apply {
+          addProperty("role", "system")
+          addProperty("content", systemInstruction)
+        }
+      )
+      turns.forEach { turn ->
+        messages.add(
+          JsonObject().apply {
+            addProperty("role", if (turn.role == ChatRole.USER) "user" else "assistant")
+            addProperty("content", turn.text)
+          }
+        )
+      }
+      val payload =
+        JsonObject().apply {
+          addProperty("model", modelName.trim().ifBlank { "deepseek-chat" })
+          add("response_format", JsonObject().apply { addProperty("type", "json_object") })
+          add("messages", messages)
+        }
+      val res =
+        client.postJson(
+          "https://api.deepseek.com/v1/chat/completions",
+          mapOf("Authorization" to "Bearer $key"),
+          payload,
+          "DeepSeek",
+          gson
+        )
+      res
+        .getAsJsonArray("choices")
+        ?.firstOrNull()
+        ?.asJsonObject
+        ?.getAsJsonObject("message")
+        ?.get("content")
+        ?.asString ?: throw Exception("DeepSeek returned no content.")
     }
 }
