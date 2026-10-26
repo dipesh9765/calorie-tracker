@@ -4,19 +4,34 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 /** Main Room SQLite Database singleton instance. */
-@Database(entities = [MealEntity::class], version = 1, exportSchema = false)
+@Database(entities = [MealEntity::class, MemoryEntity::class], version = 2, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
 
   abstract fun mealDao(): MealDao
 
+  abstract fun memoryDao(): MemoryDao
+
   companion object {
     @Volatile private var INSTANCE: AppDatabase? = null
+
+    /** v1 -> v2: adds the dietitian memory table; existing meals are untouched. */
+    val MIGRATION_1_2 =
+      object : Migration(1, 2) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+          db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `memories` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+              "`category` TEXT NOT NULL, `content` TEXT NOT NULL, " +
+              "`createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL)"
+          )
+        }
+      }
 
     fun getInstance(context: Context): AppDatabase {
       return INSTANCE
@@ -27,6 +42,7 @@ abstract class AppDatabase : RoomDatabase() {
                 AppDatabase::class.java,
                 "calorie_tracker_db"
               )
+              .addMigrations(MIGRATION_1_2)
               .addCallback(DatabaseCallback(context))
               .build()
           INSTANCE = instance

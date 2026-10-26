@@ -8,11 +8,14 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
@@ -31,6 +34,8 @@ import com.calorietracker.app.data.local.toMealEntry
 import com.calorietracker.app.data.model.DailySummary
 import com.calorietracker.app.data.model.MealEntry
 import com.calorietracker.app.data.repository.AiRepository
+import com.calorietracker.app.data.repository.MemoryRepository
+import com.calorietracker.app.presentation.DietitianChatViewModel
 import com.calorietracker.app.data.repository.PreferencesRepository
 import com.calorietracker.app.notification.NotificationHelper
 import com.calorietracker.app.notification.NotificationScheduler
@@ -55,6 +60,8 @@ class MainActivity : ComponentActivity() {
   private lateinit var preferencesRepository: PreferencesRepository
   private lateinit var database: AppDatabase
   private lateinit var mealDao: MealDao
+  private lateinit var memoryRepository: MemoryRepository
+  private val chatViewModel: DietitianChatViewModel by viewModels()
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
@@ -62,6 +69,7 @@ class MainActivity : ComponentActivity() {
     preferencesRepository = PreferencesRepository(this)
     database = AppDatabase.getInstance(this)
     mealDao = database.mealDao()
+    memoryRepository = MemoryRepository(database.memoryDao())
 
     NotificationHelper.createNotificationChannel(this)
     NotificationScheduler.schedulePeriodicCoachNotifications(this)
@@ -72,6 +80,7 @@ class MainActivity : ComponentActivity() {
   @Composable
   fun MainAppContainer() {
     var selectedScreenIndex by remember { mutableIntStateOf(0) }
+    var showMemory by remember { mutableStateOf(false) }
     var userProfile by remember { mutableStateOf(preferencesRepository.getUserProfile()) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -94,6 +103,16 @@ class MainActivity : ComponentActivity() {
         }
       }
     }
+
+    val photoPicker =
+      rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) chatViewModel.attachImage(uri)
+      }
+    val chatMessages by chatViewModel.messages.collectAsState()
+    val chatLoading by chatViewModel.isLoading.collectAsState()
+    val chatPendingImage by chatViewModel.pendingImage.collectAsState()
+    val memories by
+      remember { memoryRepository.observeAll() }.collectAsState(initial = emptyList())
 
     // Collect all meals reactively from Room SQLite database
     val allMealEntities by mealDao.getAllMeals().collectAsState(initial = emptyList())
@@ -221,8 +240,8 @@ class MainActivity : ComponentActivity() {
           NavigationBarItem(
             selected = selectedScreenIndex == 1,
             onClick = { selectedScreenIndex = 1 },
-            icon = { Icon(Icons.Default.BarChart, contentDescription = "Analytics") },
-            label = { Text("Analytics") },
+            icon = { Icon(Icons.Default.Chat, contentDescription = "Dietitian") },
+            label = { Text("Dietitian") },
             colors =
               NavigationBarItemDefaults.colors(
                 selectedIconColor = Color.White,
@@ -235,8 +254,8 @@ class MainActivity : ComponentActivity() {
           NavigationBarItem(
             selected = selectedScreenIndex == 2,
             onClick = { selectedScreenIndex = 2 },
-            icon = { Icon(Icons.Default.History, contentDescription = "History") },
-            label = { Text("Logs") },
+            icon = { Icon(Icons.Default.BarChart, contentDescription = "Analytics") },
+            label = { Text("Analytics") },
             colors =
               NavigationBarItemDefaults.colors(
                 selectedIconColor = Color.White,
@@ -249,6 +268,20 @@ class MainActivity : ComponentActivity() {
           NavigationBarItem(
             selected = selectedScreenIndex == 3,
             onClick = { selectedScreenIndex = 3 },
+            icon = { Icon(Icons.Default.History, contentDescription = "History") },
+            label = { Text("Logs") },
+            colors =
+              NavigationBarItemDefaults.colors(
+                selectedIconColor = Color.White,
+                selectedTextColor = Color.White,
+                indicatorColor = PrimaryBlue,
+                unselectedIconColor = TextSecondary,
+                unselectedTextColor = TextSecondary
+              )
+          )
+          NavigationBarItem(
+            selected = selectedScreenIndex == 4,
+            onClick = { selectedScreenIndex = 4 },
             icon = { Icon(Icons.Default.Person, contentDescription = "Profile") },
             label = { Text("Profile") },
             colors =
@@ -330,7 +363,12 @@ class MainActivity : ComponentActivity() {
                       apiKey = apiKey,
                       modelName = modelName,
                       todayContext = todaySummaryText,
-                      yesterdayContext = yesterdaySummaryText
+                      yesterdayContext = yesterdaySummaryText,
+                      memoryContext =
+                        MemoryRepository.formatForPrompt(
+                          withContext(Dispatchers.IO) { memoryRepository.getAll() },
+                          emptyText = ""
+                        )
                     )
 
                   isLoadingAi = false
@@ -379,13 +417,44 @@ class MainActivity : ComponentActivity() {
               onDeleteMeal = { meal -> deleteMealWithUndo(meal) }
             )
           1 ->
+            if (showMemory) {
+              MemoryScreen(
+                memories = memories,
+                onAdd = { category, content ->
+                  scope.launch(Dispatchers.IO) { memoryRepository.add(category, content) }
+                },
+                onEdit = { id, category, content ->
+                  scope.launch(Dispatchers.IO) { memoryRepository.edit(id, category, content) }
+                },
+                onDelete = { id -> scope.launch(Dispatchers.IO) { memoryRepository.delete(id) } },
+                onBack = { showMemory = false }
+              )
+            } else {
+              DietitianChatScreen(
+                messages = chatMessages,
+                isLoading = chatLoading,
+                pendingImage = chatPendingImage,
+                userName = userProfile.name,
+                onSend = chatViewModel::send,
+                onPickImage = {
+                  photoPicker.launch(
+                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                  )
+                },
+                onClearImage = chatViewModel::clearImage,
+                onSaveMeal = chatViewModel::saveMeal,
+                onOpenMemory = { showMemory = true },
+                onNewChat = chatViewModel::newChat
+              )
+            }
+          2 ->
             AnalyticsScreen(
               weeklySummaries = weeklySummaries,
               allMeals = allMeals,
               targetCalories = userProfile.targetDailyCalories,
               maintenanceCalories = userProfile.tdeeMaintenanceCalories
             )
-          2 ->
+          3 ->
             LogHistoryScreen(
               allMeals = allMeals,
               onDeleteMeal = { id ->
@@ -395,7 +464,7 @@ class MainActivity : ComponentActivity() {
                 }
               }
             )
-          3 ->
+          4 ->
             ProfileScreen(
               userProfile = userProfile,
               onSaveProfile = { updated ->

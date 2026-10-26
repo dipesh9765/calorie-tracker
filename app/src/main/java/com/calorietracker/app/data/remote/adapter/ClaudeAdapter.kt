@@ -1,6 +1,9 @@
 package com.calorietracker.app.data.remote.adapter
 
+import com.calorietracker.app.domain.model.ChatRole
+import com.calorietracker.app.domain.model.ChatTurn
 import com.google.gson.Gson
+import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -87,5 +90,62 @@ class ClaudeAdapter(
 
         return@withContext contentArr.get(0).asJsonObject.get("text").asString
       }
+    }
+
+  override suspend fun chat(
+    turns: List<ChatTurn>,
+    apiKey: String,
+    systemInstruction: String,
+    modelName: String
+  ): String =
+    withContext(Dispatchers.IO) {
+      val key = requireKey(apiKey, "Claude")
+      val messages = JsonArray()
+      turns.forEach { turn ->
+        val content = JsonArray()
+        turn.image?.let { img ->
+          content.add(
+            JsonObject().apply {
+              addProperty("type", "image")
+              add(
+                "source",
+                JsonObject().apply {
+                  addProperty("type", "base64")
+                  addProperty("media_type", img.mimeType)
+                  addProperty("data", img.base64)
+                }
+              )
+            }
+          )
+        }
+        content.add(JsonObject().apply { addProperty("type", "text"); addProperty("text", turn.text) })
+        messages.add(
+          JsonObject().apply {
+            addProperty("role", if (turn.role == ChatRole.USER) "user" else "assistant")
+            add("content", content)
+          }
+        )
+      }
+      val payload =
+        JsonObject().apply {
+          addProperty("model", modelName.trim().ifBlank { "claude-3-5-sonnet-20240620" })
+          addProperty("max_tokens", 1500)
+          addProperty("system", systemInstruction)
+          add("messages", messages)
+        }
+      val res =
+        client.postJson(
+          "https://api.anthropic.com/v1/messages",
+          mapOf("x-api-key" to key, "anthropic-version" to "2023-06-01"),
+          payload,
+          "Claude",
+          gson
+        )
+      res
+        .getAsJsonArray("content")
+        ?.firstOrNull { it.asJsonObject.get("type")?.asString == "text" }
+        ?.asJsonObject
+        ?.get("text")
+        ?.asString ?: throw Exception("Claude returned no text content.")
     }
 }

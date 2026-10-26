@@ -22,6 +22,10 @@ An enterprise-grade Android application built with **Kotlin**, **Jetpack Compose
   - **OpenAI** (`gpt-4o-mini`) with `json_schema` strict mode.
   - **Anthropic Claude** (`claude-3-5-sonnet-20240620`).
   - **DeepSeek** (`deepseek-chat`) with `json_object` mode.
+- 🧑‍⚕️ **AI Dietitian Chat**:
+  - A conversation, not a one-shot parser: if a portion, oil/ghee, brand or hidden ingredient is unclear, the dietitian asks short follow-up questions and keeps refining until it can give a confident estimate, which you then save to your log.
+  - **Photo upload**: attach a photo of your plate for a calorie estimate (Gemini, OpenAI and Claude; DeepSeek is text-only).
+  - **Memory**: it remembers your supplements (e.g. exact protein powder and scoop size), habits, allergies and preferences, and uses them in chat, quick-log and notifications. Say "I switched to a 40 g scoop" and it updates the memory. View, add, edit or delete memories from the 🧠 button in the chat header.
 - 🕒 **Past-Day & Relative Date Logging**:
   - Automatically parses natural language expressions like *"yesterday night I ate 2 rotis with egg curry"* or *"on Sept 8 I had saoji chicken"*.
   - Automatically resolves relative date references to past ISO dates (`YYYY-MM-DD`).

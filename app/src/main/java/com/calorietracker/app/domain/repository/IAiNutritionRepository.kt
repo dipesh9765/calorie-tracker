@@ -10,7 +10,8 @@ interface IAiNutritionRepository {
     apiKey: String,
     modelName: String = "",
     todayContext: String = "",
-    yesterdayContext: String = ""
+    yesterdayContext: String = "",
+    memoryContext: String = ""
   ): Result<Pair<Meal, String>>
 
   suspend fun generateNotificationAdvice(
@@ -21,6 +22,7 @@ interface IAiNutritionRepository {
     todayContext: String = "",
     yesterdayContext: String = "",
     targetCalories: Int,
-    targetProtein: Float
+    targetProtein: Float,
+    memoryContext: String = ""
   ): Result<String>
 }

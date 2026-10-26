@@ -5,6 +5,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.calorietracker.app.data.local.AppDatabase
 import com.calorietracker.app.data.repository.AiNutritionRepositoryImpl
+import com.calorietracker.app.data.repository.MemoryRepository
 import com.calorietracker.app.data.repository.PreferencesRepository
 import com.calorietracker.app.domain.model.AiProviderType
 import java.text.SimpleDateFormat
@@ -40,6 +41,8 @@ class CoachNotificationWorker(private val context: Context, params: WorkerParame
 
         val database = AppDatabase.getInstance(context)
         val allMeals = database.mealDao().getAllMeals().first()
+
+        val memories = database.memoryDao().getAll()
 
         val todayIso = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
         val yesterdayCalendar = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
@@ -100,7 +103,8 @@ class CoachNotificationWorker(private val context: Context, params: WorkerParame
             todayContext = todaySummary,
             yesterdayContext = yesterdaySummary,
             targetCalories = profile.targetDailyCalories,
-            targetProtein = profile.targetDailyProteinGrams
+            targetProtein = profile.targetDailyProteinGrams,
+            memoryContext = MemoryRepository.formatForPrompt(memories, emptyText = "")
           )
 
         val notificationMessage =

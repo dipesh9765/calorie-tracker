@@ -20,7 +20,8 @@ class AiRepository(
     apiKey: String,
     modelName: String = "",
     todayContext: String = "",
-    yesterdayContext: String = ""
+    yesterdayContext: String = "",
+    memoryContext: String = ""
   ): Result<MealParseResult> =
     withContext(Dispatchers.IO) {
       val providerType = AiProviderType.fromString(provider)
@@ -31,7 +32,8 @@ class AiRepository(
           apiKey = apiKey,
           modelName = modelName,
           todayContext = todayContext,
-          yesterdayContext = yesterdayContext
+          yesterdayContext = yesterdayContext,
+          memoryContext = memoryContext
         )
 
       result.fold(

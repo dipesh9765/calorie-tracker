@@ -67,7 +67,8 @@ class UseCasesTest {
       apiKey: String,
       modelName: String,
       todayContext: String,
-      yesterdayContext: String
+      yesterdayContext: String,
+      memoryContext: String
     ): Result<Pair<Meal, String>> {
       capturedInputText = mealText
       capturedProvider = provider
@@ -83,7 +84,8 @@ class UseCasesTest {
       todayContext: String,
       yesterdayContext: String,
       targetCalories: Int,
-      targetProtein: Float
+      targetProtein: Float,
+      memoryContext: String
     ): Result<String> {
       return Result.success("Sample advice")
     }

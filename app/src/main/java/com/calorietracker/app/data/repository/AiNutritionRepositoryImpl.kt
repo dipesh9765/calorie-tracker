@@ -32,7 +32,8 @@ class AiNutritionRepositoryImpl(
     apiKey: String,
     modelName: String,
     todayContext: String,
-    yesterdayContext: String
+    yesterdayContext: String,
+    memoryContext: String
   ): Result<Pair<Meal, String>> =
     withContext(Dispatchers.IO) {
       try {
@@ -61,6 +62,7 @@ class AiNutritionRepositoryImpl(
                 ${if (yesterdayContext.isNotBlank()) "- Yesterday's ($yesterdayIso) Consumption Log & Totals:\n  $yesterdayContext" else ""}
                 ${if (todayContext.isNotBlank()) "- Today's ($todayIso) Current Consumption Log & Totals:\n  $todayContext" else ""}
 
+                ${if (memoryContext.isNotBlank()) "What you remember about the user (use these facts, e.g. their usual protein powder and scoop size, instead of guessing):\n$memoryContext\n" else ""}
                 Multi-Day AI Coaching Advice Rules for "advice":
                 - Always evaluate the combined multi-day context of yesterday's consumption AND today's current totals against the user's daily targets (180g Protein, 2,300 kcal deficit).
                 - Compare today's protein/calorie trajectory against yesterday. For example, if yesterday had high protein and today is lagging, acknowledge yesterday's solid intake and recommend specific food items (e.g., Nakpro Whey, 150g chicken breast, eggs) to bridge today's remaining gap.
@@ -167,7 +169,8 @@ class AiNutritionRepositoryImpl(
     todayContext: String,
     yesterdayContext: String,
     targetCalories: Int,
-    targetProtein: Float
+    targetProtein: Float,
+    memoryContext: String
   ): Result<String> =
     withContext(Dispatchers.IO) {
       try {
@@ -187,6 +190,7 @@ class AiNutritionRepositoryImpl(
                 Current Time: $currentTime on $todayIso.
                 User Target Goals: $targetCalories kcal daily target, ${targetProtein}g daily protein target.
                 
+                ${if (memoryContext.isNotBlank()) "What you remember about $userName (respect these habits and supplements):\n$memoryContext\n" else ""}
                 System Intake Context:
                 - Yesterday's Intake: ${if (yesterdayContext.isNotBlank()) yesterdayContext else "No meals logged."}
                 - Today's Current Intake: ${if (todayContext.isNotBlank()) todayContext else "No meals logged yet."}
