@@ -23,5 +23,6 @@ data class DailyNutritionSummary(
   val totalCarbs: Float,
   val totalFat: Float,
   val creatineTaken: Boolean,
-  val mealsCount: Int
+  val mealsCount: Int,
+  val waterLiters: Float = 0f
 )

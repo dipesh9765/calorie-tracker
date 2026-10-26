@@ -2,16 +2,20 @@ package com.calorietracker.app.data.exporter
 
 import android.content.Context
 import android.os.Environment
-import com.calorietracker.app.data.model.MealEntry
+import com.calorietracker.app.domain.model.Meal
 import com.google.gson.GsonBuilder
+import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.io.FileWriter
+import javax.inject.Inject
+import javax.inject.Singleton
 
-class DataExporter(private val context: Context) {
+@Singleton
+class DataExporter @Inject constructor(@ApplicationContext private val context: Context) {
 
   private val gson = GsonBuilder().setPrettyPrinting().create()
 
-  fun exportToJson(meals: List<MealEntry>): File? {
+  fun exportToJson(meals: List<Meal>): File? {
     return try {
       val exportDir =
         context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS) ?: context.filesDir
@@ -25,7 +29,7 @@ class DataExporter(private val context: Context) {
     }
   }
 
-  fun exportToCsv(meals: List<MealEntry>): File? {
+  fun exportToCsv(meals: List<Meal>): File? {
     return try {
       val exportDir =
         context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS) ?: context.filesDir

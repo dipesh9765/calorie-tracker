@@ -2,114 +2,117 @@ package com.calorietracker.app.presentation.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.calorietracker.app.domain.model.AiProviderType
+import com.calorietracker.app.data.repository.MemoryRepository
+import com.calorietracker.app.domain.model.totals
+import com.calorietracker.app.domain.repository.IDailyLogRepository
 import com.calorietracker.app.domain.repository.IMealRepository
 import com.calorietracker.app.domain.repository.IUserProfileRepository
 import com.calorietracker.app.domain.usecase.LogMealWithAiUseCase
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-import kotlinx.coroutines.flow.*
+import com.calorietracker.app.domain.util.todayIso
+import com.calorietracker.app.presentation.UiEffect
+import dagger.hilt.android.lifecycle.HiltViewModel
+import java.time.Clock
+import javax.inject.Inject
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * Enterprise ViewModel for the Home / Today Dashboard screen.
+ * State holder for the Today screen.
  *
- * Responsibilities:
- * - Manages Unidirectional Data Flow (UDF) via immutable [StateFlow] emitting [HomeUiState].
- * - Handles UI events via [onEvent].
- * - Observes reactive meal streams from [IMealRepository].
- * - Triggers [LogMealWithAiUseCase] for natural language meal parsing.
- *
- * @property logMealWithAiUseCase Domain Use Case executing AI meal logging.
- * @property mealRepository Local meal data repository.
- * @property userProfileRepository User settings & API key repository.
+ * Exposes one immutable [HomeUiState] built from the profile, today's meals and today's habit log,
+ * and turns [HomeUiEvent]s into repository calls. One-shot messages go out through [effects].
  */
-class HomeViewModel(
-  private val logMealWithAiUseCase: LogMealWithAiUseCase,
+@HiltViewModel
+class HomeViewModel
+@Inject
+constructor(
+  private val logMealWithAi: LogMealWithAiUseCase,
   private val mealRepository: IMealRepository,
-  private val userProfileRepository: IUserProfileRepository
+  private val dailyLogRepository: IDailyLogRepository,
+  private val memoryRepository: MemoryRepository,
+  profileRepository: IUserProfileRepository,
+  private val clock: Clock
 ) : ViewModel() {
+  private val profileFlow = profileRepository.profile
+  private val aiState = MutableStateFlow(AiState())
+  private val effectChannel = Channel<UiEffect>(Channel.BUFFERED)
 
-  private val _uiState = MutableStateFlow(HomeUiState())
+  val effects: Flow<UiEffect> = effectChannel.receiveAsFlow()
 
-  /** Public read-only StateFlow emitting UI state updates to Compose views. */
-  val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
-
-  private val todayIso = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-
-  init {
-    observeMeals()
-    observeProfile()
-  }
-
-  /** Observes today's meal list and updates calorie & macro totals. */
-  private fun observeMeals() {
-    viewModelScope.launch {
-      mealRepository.getMealsForDate(todayIso).collect { meals ->
-        _uiState.update { current ->
-          current.copy(
-            todayMeals = meals,
-            todayTotalCalories = meals.sumOf { it.calories },
-            todayTotalProtein = meals.sumOf { it.proteinGrams.toDouble() }.toFloat(),
-            todayTotalCarbs = meals.sumOf { it.carbsGrams.toDouble() }.toFloat(),
-            todayTotalFat = meals.sumOf { it.fatGrams.toDouble() }.toFloat()
-          )
-        }
+  val uiState: StateFlow<HomeUiState> =
+    combine(
+        profileFlow,
+        mealRepository.getMealsForDate(clock.todayIso()),
+        dailyLogRepository.observe(clock.todayIso()),
+        aiState
+      ) { profile, meals, log, ai ->
+        HomeUiState(
+          profile = profile,
+          todayMeals = meals,
+          totals = meals.totals(),
+          dailyLog = log,
+          coachAdvice = ai.advice,
+          isLoadingAi = ai.loading
+        )
       }
-    }
-  }
+      .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), HomeUiState())
 
-  /** Observes user profile changes (targets, API keys, provider settings). */
-  private fun observeProfile() {
-    viewModelScope.launch {
-      userProfileRepository.getUserProfile().collect { profile ->
-        _uiState.update { current -> current.copy(userProfile = profile) }
-      }
-    }
-  }
-
-  /**
-   * Single entry point for user interaction events sent from the Compose UI.
-   *
-   * @param event The [HomeUiEvent] action dispatched by the user.
-   */
   fun onEvent(event: HomeUiEvent) {
     when (event) {
       is HomeUiEvent.SubmitMealInput -> submitMeal(event.mealText)
-      HomeUiEvent.ToggleCreatine -> {
-        _uiState.update { it.copy(creatineTaken = !it.creatineTaken) }
-      }
-      HomeUiEvent.DismissError -> {
-        _uiState.update { it.copy(errorMessage = null) }
-      }
+      is HomeUiEvent.DeleteMeal -> deleteMeal(event)
+      is HomeUiEvent.UndoDelete -> viewModelScope.launch { mealRepository.insertMeal(event.meal) }
+      HomeUiEvent.ToggleCreatine ->
+        viewModelScope.launch {
+          dailyLogRepository.setCreatine(clock.todayIso(), !uiState.value.dailyLog.creatineTaken)
+        }
+      is HomeUiEvent.AddWater ->
+        viewModelScope.launch { dailyLogRepository.addWater(clock.todayIso(), event.ml) }
     }
   }
 
-  /** Submits a natural language meal text for AI parsing & persistence. */
-  private fun submitMeal(mealText: String) {
-    val currentState = _uiState.value
-    val provider = AiProviderType.fromString(currentState.userProfile.primaryAiProvider)
-    val apiKey =
-      when (provider) {
-        AiProviderType.GEMINI -> currentState.userProfile.geminiApiKey
-        AiProviderType.OPENAI -> currentState.userProfile.openAiApiKey
-        AiProviderType.CLAUDE -> currentState.userProfile.claudeApiKey
-        AiProviderType.DEEPSEEK -> currentState.userProfile.deepSeekApiKey
-      }
-
-    _uiState.update { it.copy(isLoadingAi = true, errorMessage = null) }
-
+  private fun deleteMeal(event: HomeUiEvent.DeleteMeal) {
     viewModelScope.launch {
-      val result = logMealWithAiUseCase.execute(mealText, provider, apiKey)
-      _uiState.update { current ->
-        result.fold(
-          onSuccess = { (_, advice) -> current.copy(isLoadingAi = false, coachAdvice = advice) },
-          onFailure = { error ->
-            current.copy(isLoadingAi = false, errorMessage = error.localizedMessage)
-          }
-        )
-      }
+      mealRepository.deleteMeal(event.meal.id)
+      effectChannel.send(UiEffect.MealDeleted(event.meal))
     }
+  }
+
+  private fun submitMeal(text: String) {
+    if (aiState.value.loading) return
+    aiState.update { it.copy(loading = true) }
+    viewModelScope.launch {
+      val memoryContext =
+        MemoryRepository.formatForPrompt(memoryRepository.getAll(), emptyText = "")
+      val result = logMealWithAi.execute(text, profileFlow.value, memoryContext)
+      aiState.update { it.copy(loading = false) }
+      result
+        .onSuccess { logged ->
+          aiState.update { it.copy(advice = logged.coachAdvice) }
+          val verb = if (logged.wasUpdate) "Updated" else "Saved"
+          effectChannel.send(
+            UiEffect.Message("$verb (${logged.meal.dateIso}): ${logged.meal.foodName}")
+          )
+        }
+        .onFailure { error ->
+          effectChannel.send(
+            UiEffect.Message("AI Parsing Notice: ${error.localizedMessage}", long = true)
+          )
+        }
+    }
+  }
+
+  private data class AiState(val advice: String = "", val loading: Boolean = false)
+
+  private companion object {
+    const val STOP_TIMEOUT_MS = 5_000L
   }
 }

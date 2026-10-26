@@ -9,9 +9,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 /** Main Room SQLite Database singleton instance. */
 @Database(
-  entities = [MealEntity::class, MemoryEntity::class, WeightEntity::class],
-  version = 3,
-  exportSchema = false
+  entities = [MealEntity::class, MemoryEntity::class, WeightEntity::class, DailyLogEntity::class],
+  version = 4,
+  exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
 
@@ -21,8 +21,21 @@ abstract class AppDatabase : RoomDatabase() {
 
   abstract fun weightDao(): WeightDao
 
+  abstract fun dailyLogDao(): DailyLogDao
+
   companion object {
     @Volatile private var INSTANCE: AppDatabase? = null
+
+    /** v3 -> v4: adds per-day creatine and water tracking. */
+    val MIGRATION_3_4 =
+      object : Migration(3, 4) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+          db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `daily_logs` (`dateIso` TEXT NOT NULL, " +
+              "`creatineTaken` INTEGER NOT NULL, `waterMl` INTEGER NOT NULL, PRIMARY KEY(`dateIso`))"
+          )
+        }
+      }
 
     /** v2 -> v3: adds the weight history table. */
     val MIGRATION_2_3 =
@@ -56,7 +69,7 @@ abstract class AppDatabase : RoomDatabase() {
                 AppDatabase::class.java,
                 "calorie_tracker_db"
               )
-              .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+              .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
               .build()
           INSTANCE = instance
           instance

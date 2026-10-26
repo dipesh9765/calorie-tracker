@@ -21,30 +21,33 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.calorietracker.app.data.model.MealEntry
-import com.calorietracker.app.data.model.UserProfile
+import com.calorietracker.app.domain.model.MacroTargets
+import com.calorietracker.app.domain.model.Meal
+import com.calorietracker.app.presentation.home.HomeUiEvent
+import com.calorietracker.app.presentation.home.HomeUiState
 import com.calorietracker.app.ui.components.DeleteConfirmationDialog
 import com.calorietracker.app.ui.components.LiquidBubbleProgress
 import com.calorietracker.app.ui.components.MacroCard
+import com.calorietracker.app.ui.components.WaterCard
 import com.calorietracker.app.ui.theme.*
 
 @Composable
-fun HomeScreen(
-  userProfile: UserProfile,
-  todayMeals: List<MealEntry>,
-  todayTotalCalories: Int,
-  todayTotalProtein: Float,
-  todayTotalCarbs: Float,
-  todayTotalFat: Float,
-  creatineTaken: Boolean,
-  coachAdvice: String,
-  isLoadingAi: Boolean,
-  onLogMealSubmitted: (String) -> Unit,
-  onToggleCreatine: () -> Unit,
-  onDeleteMeal: (MealEntry) -> Unit
-) {
+fun HomeScreen(state: HomeUiState, onEvent: (HomeUiEvent) -> Unit) {
+  val userProfile = state.profile
+  val todayMeals = state.todayMeals
+  val todayTotalCalories = state.totals.calories
+  val todayTotalProtein = state.totals.protein
+  val todayTotalCarbs = state.totals.carbs
+  val todayTotalFat = state.totals.fat
+  val creatineTaken = state.dailyLog.creatineTaken
+  val coachAdvice = state.coachAdvice
+  val isLoadingAi = state.isLoadingAi
+  val macroTargets =
+    remember(userProfile.targetDailyCalories, userProfile.targetDailyProteinGrams) {
+      MacroTargets.from(userProfile.targetDailyCalories, userProfile.targetDailyProteinGrams)
+    }
   var mealInputText by remember { mutableStateOf("") }
-  var mealPendingDelete by remember { mutableStateOf<MealEntry?>(null) }
+  var mealPendingDelete by remember { mutableStateOf<Meal?>(null) }
 
   // Deletion confirmation dialog
   mealPendingDelete?.let { meal ->
@@ -52,7 +55,7 @@ fun HomeScreen(
       foodName = meal.foodName,
       dateIso = meal.dateIso,
       onConfirm = {
-        onDeleteMeal(meal)
+        onEvent(HomeUiEvent.DeleteMeal(meal))
         mealPendingDelete = null
       },
       onDismiss = { mealPendingDelete = null }
@@ -87,7 +90,7 @@ fun HomeScreen(
 
         // Creatine Pill Toggle
         Button(
-          onClick = onToggleCreatine,
+          onClick = { onEvent(HomeUiEvent.ToggleCreatine) },
           colors =
             ButtonDefaults.buttonColors(
               containerColor = if (creatineTaken) AccentEmerald else SurfaceCard
@@ -138,18 +141,27 @@ fun HomeScreen(
         MacroCard(
           label = "Carbs",
           currentGrams = todayTotalCarbs,
-          targetGrams = 240f,
+          targetGrams = macroTargets.carbsGrams,
           color = AccentOrange,
           modifier = Modifier.weight(1f)
         )
         MacroCard(
           label = "Fat",
           currentGrams = todayTotalFat,
-          targetGrams = 65f,
+          targetGrams = macroTargets.fatGrams,
           color = AccentPurple,
           modifier = Modifier.weight(1f)
         )
       }
+    }
+
+    // Water intake
+    item {
+      WaterCard(
+        liters = state.dailyLog.waterLiters,
+        targetLiters = userProfile.targetWaterLiters,
+        onAdd = { ml -> onEvent(HomeUiEvent.AddWater(ml)) }
+      )
     }
 
     // AI Nutritionist Advice Callout Card
@@ -226,7 +238,7 @@ fun HomeScreen(
           IconButton(
             onClick = {
               if (mealInputText.isNotBlank() && !isLoadingAi) {
-                onLogMealSubmitted(mealInputText)
+                onEvent(HomeUiEvent.SubmitMealInput(mealInputText))
                 mealInputText = ""
               }
             },

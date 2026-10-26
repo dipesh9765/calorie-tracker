@@ -29,9 +29,13 @@ complexity:
     ignoreAnnotated: ['Composable']
   LongParameterList:
     functionThreshold: 8
-    ignoreAnnotated: ['Composable']
+    constructorThreshold: 8
+    ignoreAnnotated: ['Composable', 'Inject', 'AssistedInject']
+    excludes: ['**/test/**']
   CyclomaticComplexMethod:
     threshold: 20
   TooManyFunctions:
     thresholdInFiles: 20
     thresholdInClasses: 20
+    thresholdInObjects: 12
+    ignoreAnnotated: ['Module']

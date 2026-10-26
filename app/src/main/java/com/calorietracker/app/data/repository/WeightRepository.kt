@@ -5,9 +5,12 @@ import com.calorietracker.app.data.local.WeightEntity
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlin.math.abs
 
-class WeightRepository(private val dao: WeightDao) {
+@Singleton
+class WeightRepository @Inject constructor(private val dao: WeightDao) {
 
   fun observeAll() = dao.observeAll()
 

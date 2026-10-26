@@ -1,9 +1,9 @@
 package com.calorietracker.app
 
 import com.calorietracker.app.data.local.MealEntity
-import com.calorietracker.app.data.local.toMealEntity
-import com.calorietracker.app.data.local.toMealEntry
-import com.calorietracker.app.data.model.MealEntry
+import com.calorietracker.app.data.local.toDomain
+import com.calorietracker.app.data.local.toEntity
+import com.calorietracker.app.domain.model.Meal
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -11,9 +11,9 @@ import org.junit.Test
 class RoomDatabaseTest {
 
   @Test
-  fun `toMealEntity converts MealEntry to MealEntity correctly`() {
+  fun `toEntity converts Meal to MealEntity correctly`() {
     val entry =
-      MealEntry(
+      Meal(
         id = "test_uuid_123",
         foodName = "2 Rotis & Chicken Curry",
         portionDescription = "2 chapatis + 150g chicken",
@@ -25,7 +25,7 @@ class RoomDatabaseTest {
         dateIso = "2026-09-10"
       )
 
-    val entity = entry.toMealEntity()
+    val entity = entry.toEntity()
 
     assertEquals(entry.id, entity.id)
     assertEquals(entry.foodName, entity.foodName)
@@ -36,7 +36,7 @@ class RoomDatabaseTest {
   }
 
   @Test
-  fun `toMealEntry converts MealEntity to MealEntry cleanly`() {
+  fun `toDomain converts MealEntity to Meal cleanly`() {
     val entity =
       MealEntity(
         id = "entity_id_999",
@@ -50,7 +50,7 @@ class RoomDatabaseTest {
         dateIso = "2026-09-11"
       )
 
-    val entry = entity.toMealEntry()
+    val entry = entity.toDomain()
 
     assertEquals("entity_id_999", entry.id)
     assertEquals("1 Scoop Nakpro Whey", entry.foodName)

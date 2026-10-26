@@ -1,5 +1,7 @@
 package com.calorietracker.app.data.model
 
+import com.calorietracker.app.domain.model.AiProviderType
+
 data class UserProfile(
   val name: String = "",
   val age: Int = 30,
@@ -37,4 +39,31 @@ data class UserProfile(
   /** Name for greetings and prompts when the user hasn't entered one yet. */
   val displayName: String
     get() = name.trim().ifBlank { "there" }
+
+  /** The provider the user picked for meal parsing, chat and coaching. */
+  val provider: AiProviderType
+    get() = AiProviderType.fromString(primaryAiProvider)
+
+  fun apiKeyFor(type: AiProviderType): String =
+    when (type) {
+      AiProviderType.GEMINI -> geminiApiKey
+      AiProviderType.OPENAI -> openAiApiKey
+      AiProviderType.CLAUDE -> claudeApiKey
+      AiProviderType.DEEPSEEK -> deepSeekApiKey
+    }.trim()
+
+  fun modelFor(type: AiProviderType): String =
+    when (type) {
+      AiProviderType.GEMINI -> geminiModel
+      AiProviderType.OPENAI -> openAiModel
+      AiProviderType.CLAUDE -> claudeModel
+      AiProviderType.DEEPSEEK -> deepSeekModel
+    }.trim()
+
+  /** API key and model of the selected [provider]. */
+  val activeApiKey: String
+    get() = apiKeyFor(provider)
+
+  val activeModel: String
+    get() = modelFor(provider)
 }

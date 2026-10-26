@@ -5,10 +5,13 @@ import com.calorietracker.app.data.local.MemoryDao
 import com.calorietracker.app.data.local.MemoryEntity
 import com.calorietracker.app.domain.model.MemoryOp
 import com.calorietracker.app.domain.model.MemoryUpdate
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
 
 /** Stores the facts the dietitian remembers about the user. Edited by the user or by the AI. */
-class MemoryRepository(private val dao: MemoryDao) {
+@Singleton
+class MemoryRepository @Inject constructor(private val dao: MemoryDao) {
 
   fun observeAll(): Flow<List<MemoryEntity>> = dao.observeAll()
 

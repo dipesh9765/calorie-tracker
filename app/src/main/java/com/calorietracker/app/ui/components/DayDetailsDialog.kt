@@ -15,8 +15,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.calorietracker.app.data.model.DailySummary
-import com.calorietracker.app.data.model.MealEntry
+import com.calorietracker.app.domain.model.DailyNutritionSummary
+import com.calorietracker.app.domain.model.Meal
 import com.calorietracker.app.ui.theme.*
 
 /**
@@ -24,7 +24,7 @@ import com.calorietracker.app.ui.theme.*
  * with combined total calories and macronutrient statistics.
  */
 @Composable
-fun DayDetailsDialog(summary: DailySummary, dayMeals: List<MealEntry>, onDismiss: () -> Unit) {
+fun DayDetailsDialog(summary: DailyNutritionSummary, dayMeals: List<Meal>, onDismiss: () -> Unit) {
   AlertDialog(
     onDismissRequest = onDismiss,
     containerColor = SurfaceDark,
