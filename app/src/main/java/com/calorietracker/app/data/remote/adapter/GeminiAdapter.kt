@@ -45,9 +45,9 @@ class GeminiAdapter(
 
       val selectedModel = modelName.trim().ifBlank { "gemini-3.6-flash" }
       val primaryUrl =
-        "https://generativelanguage.googleapis.com/v1beta/models/$selectedModel:generateContent?key=$cleanKey"
+        "https://generativelanguage.googleapis.com/v1beta/models/$selectedModel:generateContent"
       val fallbackUrl =
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=$cleanKey"
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent"
 
       // Construct native Gemini JSON schema definition
       val schemaObject =
@@ -114,21 +114,27 @@ class GeminiAdapter(
 
       // Try primary model (gemini-3.6-flash) first, fallback to gemini-3.5-flash if needed
       try {
-        return@withContext executeGeminiCall(primaryUrl, requestBody)
+        return@withContext executeGeminiCall(primaryUrl, cleanKey, requestBody)
       } catch (e: Exception) {
         val message = e.message ?: ""
         if (
           message.contains("404") || message.contains("not found") || message.contains("NOT_FOUND")
         ) {
-          return@withContext executeGeminiCall(fallbackUrl, requestBody)
+          return@withContext executeGeminiCall(fallbackUrl, cleanKey, requestBody)
         } else {
           throw e
         }
       }
     }
 
-  private fun executeGeminiCall(url: String, requestBody: okhttp3.RequestBody): String {
-    val request = Request.Builder().url(url).post(requestBody).build()
+  private fun executeGeminiCall(
+    url: String,
+    apiKey: String,
+    requestBody: okhttp3.RequestBody
+  ): String {
+    // Key goes in a header, not the URL, so it never lands in logs or proxy caches.
+    val request =
+      Request.Builder().url(url).header("x-goog-api-key", apiKey).post(requestBody).build()
 
     client.newCall(request).execute().use { response ->
       val responseBody = response.body?.string() ?: ""

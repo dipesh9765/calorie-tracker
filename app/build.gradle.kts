@@ -19,14 +19,27 @@ android {
     vectorDrawables { useSupportLibrary = true }
   }
 
+  // Signing secrets come from the environment (CI) or ~/.gradle/gradle.properties, never source.
   val keystoreFile = file("${rootDir}/release-key.jks")
+  val keystorePassword =
+    providers.environmentVariable("KEYSTORE_PASSWORD").orNull
+      ?: providers.gradleProperty("keystorePassword").orNull
+  val keyAliasName =
+    providers.environmentVariable("KEY_ALIAS").orNull
+      ?: providers.gradleProperty("keyAlias").orNull
+      ?: "calorietracker"
+  val keyPasswordValue =
+    providers.environmentVariable("KEY_PASSWORD").orNull
+      ?: providers.gradleProperty("keyPassword").orNull
+      ?: keystorePassword
+  val canSign = keystoreFile.exists() && keystorePassword != null
   signingConfigs {
-    if (keystoreFile.exists()) {
+    if (canSign) {
       create("release") {
         storeFile = keystoreFile
-        storePassword = "CalorieTracker123"
-        keyAlias = "calorietracker"
-        keyPassword = "CalorieTracker123"
+        storePassword = keystorePassword
+        keyAlias = keyAliasName
+        keyPassword = keyPasswordValue
         enableV1Signing = true
         enableV2Signing = true
       }
@@ -35,13 +48,13 @@ android {
 
   buildTypes {
     debug {
-      if (keystoreFile.exists()) {
+      if (canSign) {
         signingConfig = signingConfigs.getByName("release")
       }
     }
     release {
       isMinifyEnabled = false
-      if (keystoreFile.exists()) {
+      if (canSign) {
         signingConfig = signingConfigs.getByName("release")
       }
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
