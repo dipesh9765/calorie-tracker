@@ -1,7 +1,7 @@
 package com.calorietracker.app.data.repository
 
-import com.calorietracker.app.data.remote.adapter.*
 import com.calorietracker.app.data.model.UserProfile
+import com.calorietracker.app.data.remote.adapter.*
 import com.calorietracker.app.domain.model.AiProviderType
 import com.calorietracker.app.domain.model.Meal
 import com.calorietracker.app.domain.repository.IAiNutritionRepository

@@ -2,6 +2,7 @@ package com.calorietracker.app
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
@@ -11,11 +12,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import android.net.Uri
-import androidx.core.content.FileProvider
-import androidx.compose.runtime.saveable.rememberSaveable
-import com.calorietracker.app.data.repository.WeightRepository
-import java.io.File
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -26,14 +22,15 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.lifecycle.lifecycleScope
 import com.calorietracker.app.data.exporter.DataExporter
 import com.calorietracker.app.data.local.AppDatabase
 import com.calorietracker.app.data.local.MealDao
-import com.calorietracker.app.data.local.MealEntity
 import com.calorietracker.app.data.local.toMealEntity
 import com.calorietracker.app.data.local.toMealEntry
 import com.calorietracker.app.data.model.DailySummary
@@ -41,21 +38,22 @@ import com.calorietracker.app.data.model.MealEntry
 import com.calorietracker.app.data.model.UserProfile
 import com.calorietracker.app.data.repository.AiRepository
 import com.calorietracker.app.data.repository.MemoryRepository
-import com.calorietracker.app.presentation.DietitianChatViewModel
 import com.calorietracker.app.data.repository.PreferencesRepository
+import com.calorietracker.app.data.repository.WeightRepository
 import com.calorietracker.app.notification.NotificationHelper
 import com.calorietracker.app.notification.NotificationScheduler
+import com.calorietracker.app.presentation.DietitianChatViewModel
 import com.calorietracker.app.ui.screens.*
 import com.calorietracker.app.ui.theme.BackgroundDark
 import com.calorietracker.app.ui.theme.CalorieTrackerTheme
 import com.calorietracker.app.ui.theme.PrimaryBlue
 import com.calorietracker.app.ui.theme.SurfaceDark
 import com.calorietracker.app.ui.theme.TextSecondary
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -152,8 +150,7 @@ class MainActivity : ComponentActivity() {
     val chatMessages by chatViewModel.messages.collectAsState()
     val chatLoading by chatViewModel.isLoading.collectAsState()
     val chatPendingImage by chatViewModel.pendingImage.collectAsState()
-    val memories by
-      remember { memoryRepository.observeAll() }.collectAsState(initial = emptyList())
+    val memories by remember { memoryRepository.observeAll() }.collectAsState(initial = emptyList())
 
     // Collect all meals reactively from Room SQLite database
     val allMealEntities by mealDao.getAllMeals().collectAsState(initial = emptyList())

@@ -46,13 +46,15 @@ fun ProfileDetailsCard(
   var weight by remember(profile) { mutableStateOf(trimZero(profile.weightKg)) }
   var targetWeight by remember(profile) { mutableStateOf(trimZero(profile.targetWeightKg)) }
   var goal by remember(profile) { mutableStateOf(GoalType.fromName(profile.goalType)) }
-  var rate by remember(profile) { mutableStateOf(profile.weeklyRateKg) }
-  var activity by remember(profile) { mutableStateOf(ActivityLevel.fromName(profile.activityLevel)) }
+  var rate by remember(profile) { mutableFloatStateOf(profile.weeklyRateKg) }
+  var activity by
+    remember(profile) { mutableStateOf(ActivityLevel.fromName(profile.activityLevel)) }
   var cuisine by remember(profile) { mutableStateOf(profile.cuisine) }
   var diet by remember(profile) { mutableStateOf(profile.dietType) }
   var manual by remember(profile) { mutableStateOf(false) }
   var manualCalories by remember(profile) { mutableStateOf(profile.targetDailyCalories.toString()) }
-  var manualProtein by remember(profile) { mutableStateOf(profile.targetDailyProteinGrams.toInt().toString()) }
+  var manualProtein by
+    remember(profile) { mutableStateOf(profile.targetDailyProteinGrams.toInt().toString()) }
 
   val ageV = age.toIntOrNull()?.takeIf { it in 12..100 }
   val heightV = height.toFloatOrNull()?.takeIf { it in 100f..250f }
@@ -62,9 +64,7 @@ fun ProfileDetailsCard(
 
   val plan =
     if (valid) {
-      planner.plan(
-        PlanInput(weightV!!, heightV!!, ageV!!, gender, activity, goal, targetV!!, rate)
-      )
+      planner.plan(PlanInput(weightV!!, heightV!!, ageV!!, gender, activity, goal, targetV!!, rate))
     } else {
       null
     }
@@ -85,7 +85,8 @@ fun ProfileDetailsCard(
         Column {
           Text("About you", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
           Text(
-            if (profile.profileConfigured) "Update these any time and your targets are recalculated."
+            if (profile.profileConfigured)
+              "Update these any time and your targets are recalculated."
             else "Fill this in once so your targets and your dietitian fit you.",
             color = TextSecondary,
             fontSize = 12.sp
@@ -103,18 +104,35 @@ fun ProfileDetailsCard(
       )
 
       Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        NumberField("Age", age, { age = it }, ageV == null, Modifier.weight(1f), KeyboardType.Number)
+        NumberField(
+          "Age",
+          age,
+          { age = it },
+          ageV == null,
+          Modifier.weight(1f),
+          KeyboardType.Number
+        )
         NumberField("Height (cm)", height, { height = it }, heightV == null, Modifier.weight(1f))
       }
       ChipRow {
         listOf("Male", "Female").forEach { g ->
-          FilterChip(selected = gender.equals(g, true), onClick = { gender = g }, label = { Text(g) })
+          FilterChip(
+            selected = gender.equals(g, true),
+            onClick = { gender = g },
+            label = { Text(g) }
+          )
         }
       }
 
       Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         NumberField("Weight (kg)", weight, { weight = it }, weightV == null, Modifier.weight(1f))
-        NumberField("Target (kg)", targetWeight, { targetWeight = it }, targetV == null, Modifier.weight(1f))
+        NumberField(
+          "Target (kg)",
+          targetWeight,
+          { targetWeight = it },
+          targetV == null,
+          Modifier.weight(1f)
+        )
       }
 
       SectionLabel("Goal")
@@ -127,11 +145,7 @@ fun ProfileDetailsCard(
         SectionLabel("Pace (kg per week)")
         ChipRow {
           RATES.forEach { r ->
-            FilterChip(
-              selected = rate == r,
-              onClick = { rate = r },
-              label = { Text(trimZero(r)) }
-            )
+            FilterChip(selected = rate == r, onClick = { rate = r }, label = { Text(trimZero(r)) })
           }
         }
       }
@@ -139,7 +153,11 @@ fun ProfileDetailsCard(
       SectionLabel("Activity level")
       ChipRow {
         ActivityLevel.entries.forEach { a ->
-          FilterChip(selected = activity == a, onClick = { activity = a }, label = { Text(a.label) })
+          FilterChip(
+            selected = activity == a,
+            onClick = { activity = a },
+            label = { Text(a.label) }
+          )
         }
       }
       Text(activity.description, color = TextSecondary, fontSize = 12.sp)
@@ -162,10 +180,25 @@ fun ProfileDetailsCard(
       HorizontalDivider(color = SurfaceDark)
 
       if (plan != null) {
-        Text("Your daily targets", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+        Text(
+          "Your daily targets",
+          color = Color.White,
+          fontWeight = FontWeight.Bold,
+          fontSize = 15.sp
+        )
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-          Stat("Calories", "${if (manual && manualCal != null) manualCal else plan.targetCalories}", "kcal", AccentEmerald)
-          Stat("Protein", "${if (manual && manualPro != null) manualPro.toInt() else plan.proteinGrams.toInt()}", "g", PrimaryBlue)
+          Stat(
+            "Calories",
+            "${if (manual && manualCal != null) manualCal else plan.targetCalories}",
+            "kcal",
+            AccentEmerald
+          )
+          Stat(
+            "Protein",
+            "${if (manual && manualPro != null) manualPro.toInt() else plan.proteinGrams.toInt()}",
+            "g",
+            PrimaryBlue
+          )
           Stat("Water", "${plan.waterLiters}", "L", AccentPurple)
         }
         Text(
@@ -176,7 +209,11 @@ fun ProfileDetailsCard(
         )
         plan.warnings.forEach { Text("• $it", color = AccentOrange, fontSize = 12.sp) }
       } else {
-        Text("Enter valid age, height and weights to see your targets.", color = AccentOrange, fontSize = 13.sp)
+        Text(
+          "Enter valid age, height and weights to see your targets.",
+          color = AccentOrange,
+          fontSize = 13.sp
+        )
       }
 
       Row(verticalAlignment = Alignment.CenterVertically) {
@@ -186,8 +223,22 @@ fun ProfileDetailsCard(
       }
       if (manual) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-          NumberField("Calories", manualCalories, { manualCalories = it }, manualCal == null, Modifier.weight(1f), KeyboardType.Number)
-          NumberField("Protein (g)", manualProtein, { manualProtein = it }, manualPro == null, Modifier.weight(1f), KeyboardType.Number)
+          NumberField(
+            "Calories",
+            manualCalories,
+            { manualCalories = it },
+            manualCal == null,
+            Modifier.weight(1f),
+            KeyboardType.Number
+          )
+          NumberField(
+            "Protein (g)",
+            manualProtein,
+            { manualProtein = it },
+            manualPro == null,
+            Modifier.weight(1f),
+            KeyboardType.Number
+          )
         }
       }
 
@@ -229,7 +280,10 @@ fun ProfileDetailsCard(
         weightHistory.take(6).forEachIndexed { i, w ->
           val prev = weightHistory.getOrNull(i + 1)
           val delta = prev?.let { w.weightKg - it.weightKg }
-          Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+          ) {
             Text(w.dateIso, color = TextSecondary, fontSize = 13.sp)
             Text(
               "${"%.1f".format(w.weightKg)} kg" +

@@ -176,7 +176,9 @@ class DietitianChatViewModel(app: Application) : AndroidViewModel(app) {
           }
           prefs.saveUserProfile(updated)
           _profileVersion.update { it + 1 }
-          if (profile.profileConfigured && updated.targetDailyCalories != profile.targetDailyCalories) {
+          if (
+            profile.profileConfigured && updated.targetDailyCalories != profile.targetDailyCalories
+          ) {
             "Logged ${"%.1f".format(weightKg)} kg. New targets: ${updated.targetDailyCalories} kcal, " +
               "${updated.targetDailyProteinGrams.toInt()} g protein"
           } else {
@@ -220,9 +222,10 @@ class DietitianChatViewModel(app: Application) : AndroidViewModel(app) {
   private fun historyForProvider(): List<ChatTurn> {
     // Providers require the conversation to open with a user turn.
     val turns =
-      _messages.value.filterNot { it.isError }.takeLast(MAX_HISTORY).dropWhile {
-        it.role != ChatRole.USER
-      }
+      _messages.value
+        .filterNot { it.isError }
+        .takeLast(MAX_HISTORY)
+        .dropWhile { it.role != ChatRole.USER }
     val imageIdsToKeep =
       turns.filter { it.image != null }.takeLast(MAX_IMAGES_IN_HISTORY).map { it.id }.toSet()
     return turns.map {
@@ -230,7 +233,9 @@ class DietitianChatViewModel(app: Application) : AndroidViewModel(app) {
     }
   }
 
-  /** Plain-text replay of an assistant turn, including the estimate so later turns can refine it. */
+  /**
+   * Plain-text replay of an assistant turn, including the estimate so later turns can refine it.
+   */
   private fun historyTextFor(message: String, questions: List<String>, meal: Meal?): String {
     val parts = mutableListOf(message)
     if (questions.isNotEmpty()) {
@@ -276,7 +281,8 @@ class DietitianChatViewModel(app: Application) : AndroidViewModel(app) {
 
   private fun weekSummary(meals: List<MealEntity>, fmt: SimpleDateFormat): String =
     (6 downTo 0).joinToString("\n") { daysAgo ->
-      val day = fmt.format(Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -daysAgo) }.time)
+      val day =
+        fmt.format(Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -daysAgo) }.time)
       val dayMeals = meals.filter { it.dateIso == day }
       if (dayMeals.isEmpty()) {
         "$day: nothing logged"

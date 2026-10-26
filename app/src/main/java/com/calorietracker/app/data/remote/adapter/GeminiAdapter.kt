@@ -226,7 +226,12 @@ class GeminiAdapter(
           add(
             "systemInstruction",
             JsonObject().apply {
-              add("parts", JsonArray().apply { add(JsonObject().apply { addProperty("text", systemInstruction) }) })
+              add(
+                "parts",
+                JsonArray().apply {
+                  add(JsonObject().apply { addProperty("text", systemInstruction) })
+                }
+              )
             }
           )
           add("contents", contents)

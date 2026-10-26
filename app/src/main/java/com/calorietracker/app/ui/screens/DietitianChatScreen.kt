@@ -6,11 +6,11 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -39,12 +39,7 @@ import com.calorietracker.app.presentation.MealCardState
 import com.calorietracker.app.ui.theme.*
 
 private val QUICK_ACTIONS =
-  listOf(
-    "How am I doing today?",
-    "What should I eat next?",
-    "Review my week",
-    "I weighed in today"
-  )
+  listOf("How am I doing today?", "What should I eat next?", "Review my week", "I weighed in today")
 
 @Composable
 fun DietitianChatScreen(
@@ -72,7 +67,10 @@ fun DietitianChatScreen(
 
   Column(modifier = Modifier.fillMaxSize().imePadding()) {
     Row(
-      modifier = Modifier.fillMaxWidth().background(SurfaceDark).padding(horizontal = 16.dp, vertical = 10.dp),
+      modifier =
+        Modifier.fillMaxWidth()
+          .background(SurfaceDark)
+          .padding(horizontal = 16.dp, vertical = 10.dp),
       verticalAlignment = Alignment.CenterVertically
     ) {
       Column(modifier = Modifier.weight(1f)) {
@@ -99,7 +97,12 @@ fun DietitianChatScreen(
             colors = CardDefaults.cardColors(containerColor = AccentOrange.copy(alpha = 0.15f)),
             modifier = Modifier.fillMaxWidth().clickable(onClick = onSetupClick)
           ) {
-            Text(setupHint, color = AccentOrange, fontSize = 13.sp, modifier = Modifier.padding(12.dp))
+            Text(
+              setupHint,
+              color = AccentOrange,
+              fontSize = 13.sp,
+              modifier = Modifier.padding(12.dp)
+            )
           }
         }
       }
@@ -112,7 +115,11 @@ fun DietitianChatScreen(
       if (isLoading) {
         item {
           Row(verticalAlignment = Alignment.CenterVertically) {
-            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = PrimaryBlue)
+            CircularProgressIndicator(
+              modifier = Modifier.size(18.dp),
+              strokeWidth = 2.dp,
+              color = PrimaryBlue
+            )
             Spacer(Modifier.width(8.dp))
             Text("Dietitian is thinking…", color = TextSecondary, fontSize = 13.sp)
           }
@@ -125,15 +132,26 @@ fun DietitianChatScreen(
         DecodedImage(img, Modifier.size(72.dp).clip(RoundedCornerShape(12.dp)))
         IconButton(
           onClick = onClearImage,
-          modifier = Modifier.align(Alignment.TopEnd).size(22.dp).background(Color.Black.copy(alpha = 0.6f), CircleShape)
+          modifier =
+            Modifier.align(Alignment.TopEnd)
+              .size(22.dp)
+              .background(Color.Black.copy(alpha = 0.6f), CircleShape)
         ) {
-          Icon(Icons.Default.Close, contentDescription = "Remove photo", tint = Color.White, modifier = Modifier.size(14.dp))
+          Icon(
+            Icons.Default.Close,
+            contentDescription = "Remove photo",
+            tint = Color.White,
+            modifier = Modifier.size(14.dp)
+          )
         }
       }
     }
 
     Row(
-      modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 4.dp),
+      modifier =
+        Modifier.fillMaxWidth()
+          .horizontalScroll(rememberScrollState())
+          .padding(horizontal = 12.dp, vertical = 4.dp),
       horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
       QUICK_ACTIONS.forEach { action ->
@@ -141,7 +159,11 @@ fun DietitianChatScreen(
           onClick = { onSend(action) },
           enabled = !isLoading,
           label = { Text(action, fontSize = 12.sp) },
-          colors = AssistChipDefaults.assistChipColors(containerColor = SurfaceCard, labelColor = TextPrimary)
+          colors =
+            AssistChipDefaults.assistChipColors(
+              containerColor = SurfaceCard,
+              labelColor = TextPrimary
+            )
         )
       }
     }
@@ -153,7 +175,11 @@ fun DietitianChatScreen(
       var attachMenuOpen by remember { mutableStateOf(false) }
       Box {
         IconButton(onClick = { attachMenuOpen = true }, enabled = !isLoading) {
-          Icon(Icons.Default.AddPhotoAlternate, contentDescription = "Attach photo", tint = PrimaryBlue)
+          Icon(
+            Icons.Default.AddPhotoAlternate,
+            contentDescription = "Attach photo",
+            tint = PrimaryBlue
+          )
         }
         DropdownMenu(expanded = attachMenuOpen, onDismissRequest = { attachMenuOpen = false }) {
           DropdownMenuItem(
@@ -197,7 +223,11 @@ fun DietitianChatScreen(
         },
         enabled = canSend
       ) {
-        Icon(Icons.Default.Send, contentDescription = "Send", tint = if (canSend) PrimaryBlue else TextSecondary)
+        Icon(
+          Icons.Default.Send,
+          contentDescription = "Send",
+          tint = if (canSend) PrimaryBlue else TextSecondary
+        )
       }
     }
   }
@@ -205,7 +235,10 @@ fun DietitianChatScreen(
 
 @Composable
 private fun EmptyState(userName: String) {
-  Column(modifier = Modifier.fillMaxWidth().padding(top = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+  Column(
+    modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
+    horizontalAlignment = Alignment.CenterHorizontally
+  ) {
     Text("Hi $userName 👋", color = TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold)
     Spacer(Modifier.height(6.dp))
     Text(
@@ -238,14 +271,24 @@ private fun MessageBubble(msg: ChatMessageUi, onSaveMeal: () -> Unit) {
           .padding(12.dp),
       verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-      msg.image?.let { DecodedImage(it, Modifier.fillMaxWidth().heightIn(max = 220.dp).clip(RoundedCornerShape(10.dp))) }
+      msg.image?.let {
+        DecodedImage(
+          it,
+          Modifier.fillMaxWidth().heightIn(max = 220.dp).clip(RoundedCornerShape(10.dp))
+        )
+      }
       if (msg.text.isNotBlank()) {
         Text(msg.text, color = if (isUser) Color.White else TextPrimary, fontSize = 15.sp)
       }
       if (msg.questions.isNotEmpty()) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
           msg.questions.forEachIndexed { i, q ->
-            Text("${i + 1}. $q", color = AccentOrange, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+            Text(
+              "${i + 1}. $q",
+              color = AccentOrange,
+              fontSize = 14.sp,
+              fontWeight = FontWeight.Medium
+            )
           }
         }
       }
@@ -256,10 +299,18 @@ private fun MessageBubble(msg: ChatMessageUi, onSaveMeal: () -> Unit) {
         colors = CardDefaults.cardColors(containerColor = SurfaceDark),
         modifier = Modifier.widthIn(max = 320.dp).fillMaxWidth(0.92f)
       ) {
-        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(
+          modifier = Modifier.padding(14.dp),
+          verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
           Text(meal.foodName, color = TextPrimary, fontWeight = FontWeight.Bold)
           Text(meal.portionDescription, color = TextSecondary, fontSize = 12.sp)
-          Text("${meal.calories} kcal", color = AccentEmerald, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+          Text(
+            "${meal.calories} kcal",
+            color = AccentEmerald,
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold
+          )
           Text(
             "P ${"%.0f".format(meal.proteinGrams)}g · C ${"%.0f".format(meal.carbsGrams)}g · F ${"%.0f".format(meal.fatGrams)}g · ${meal.dateIso}",
             color = TextSecondary,
@@ -268,8 +319,11 @@ private fun MessageBubble(msg: ChatMessageUi, onSaveMeal: () -> Unit) {
           Spacer(Modifier.height(4.dp))
           when (msg.mealState) {
             MealCardState.PENDING ->
-              Button(onClick = onSaveMeal, modifier = Modifier.fillMaxWidth()) { Text("Save to log") }
-            MealCardState.SAVED -> Text("✓ Saved to your log", color = AccentEmerald, fontSize = 13.sp)
+              Button(onClick = onSaveMeal, modifier = Modifier.fillMaxWidth()) {
+                Text("Save to log")
+              }
+            MealCardState.SAVED ->
+              Text("✓ Saved to your log", color = AccentEmerald, fontSize = 13.sp)
             MealCardState.SUPERSEDED ->
               Text("Replaced by a newer estimate", color = TextSecondary, fontSize = 13.sp)
           }
@@ -280,10 +334,17 @@ private fun MessageBubble(msg: ChatMessageUi, onSaveMeal: () -> Unit) {
     msg.memoryNotes.forEach { note ->
       Row(
         modifier =
-          Modifier.clip(RoundedCornerShape(12.dp)).background(AccentPurple.copy(alpha = 0.15f)).padding(horizontal = 10.dp, vertical = 5.dp),
+          Modifier.clip(RoundedCornerShape(12.dp))
+            .background(AccentPurple.copy(alpha = 0.15f))
+            .padding(horizontal = 10.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically
       ) {
-        Icon(Icons.Default.Psychology, contentDescription = null, tint = AccentPurple, modifier = Modifier.size(14.dp))
+        Icon(
+          Icons.Default.Psychology,
+          contentDescription = null,
+          tint = AccentPurple,
+          modifier = Modifier.size(14.dp)
+        )
         Spacer(Modifier.width(6.dp))
         Text(note, color = AccentPurple, fontSize = 12.sp)
       }
@@ -302,6 +363,11 @@ private fun DecodedImage(image: ChatImage, modifier: Modifier) {
         .getOrNull()
     }
   if (bitmap != null) {
-    Image(bitmap = bitmap, contentDescription = "Meal photo", modifier = modifier, contentScale = ContentScale.Crop)
+    Image(
+      bitmap = bitmap,
+      contentDescription = "Meal photo",
+      modifier = modifier,
+      contentScale = ContentScale.Crop
+    )
   }
 }

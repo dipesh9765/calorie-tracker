@@ -34,7 +34,8 @@ class WeightRepository(private val dao: WeightDao) {
       if (readings.isEmpty()) return "No weigh-ins logged."
       val newest = readings.first()
       val oldest = readings.last()
-      if (readings.size == 1) return "${"%.1f".format(newest.weightKg)} kg on ${newest.dateIso} (only reading)."
+      if (readings.size == 1)
+        return "${"%.1f".format(newest.weightKg)} kg on ${newest.dateIso} (only reading)."
       val delta = newest.weightKg - oldest.weightKg
       val sign = if (delta > 0) "+" else ""
       return "${"%.1f".format(newest.weightKg)} kg on ${newest.dateIso}; " +

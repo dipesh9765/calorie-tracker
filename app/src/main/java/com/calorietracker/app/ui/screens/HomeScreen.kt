@@ -206,11 +206,7 @@ fun HomeScreen(
             value = mealInputText,
             onValueChange = { mealInputText = it },
             placeholder = {
-              Text(
-                "e.g. 2 rotis with dal and sabzi",
-                color = TextSecondary,
-                fontSize = 13.sp
-              )
+              Text("e.g. 2 rotis with dal and sabzi", color = TextSecondary, fontSize = 13.sp)
             },
             modifier = Modifier.weight(1f),
             colors =

@@ -259,11 +259,15 @@ fun AnalyticsScreen(
           Column(horizontalAlignment = Alignment.End) {
             Text(
               text = "${summary.totalCalories} / ${summary.targetCalories} kcal",
-              color = if (summary.totalCalories <= summary.targetCalories) AccentEmerald else AccentOrange,
+              color =
+                if (summary.totalCalories <= summary.targetCalories) AccentEmerald
+                else AccentOrange,
               fontSize = 14.sp,
               fontWeight = FontWeight.Bold
             )
-            val status = if (summary.totalCalories <= summary.targetCalories) "Within target" else "Over target"
+            val status =
+              if (summary.totalCalories <= summary.targetCalories) "Within target"
+              else "Over target"
             Text(text = status, color = TextSecondary, fontSize = 11.sp)
           }
         }

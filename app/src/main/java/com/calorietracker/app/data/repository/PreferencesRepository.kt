@@ -2,6 +2,7 @@ package com.calorietracker.app.data.repository
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit
 import com.calorietracker.app.data.model.UserProfile
 import com.google.gson.Gson
 
@@ -28,6 +29,6 @@ class PreferencesRepository(context: Context, private val gson: Gson = Gson()) {
 
   fun saveUserProfile(profile: UserProfile) {
     val json = gson.toJson(profile)
-    prefs.edit().putString(KEY_PROFILE, json).apply()
+    prefs.edit { putString(KEY_PROFILE, json) }
   }
 }

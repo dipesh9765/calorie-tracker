@@ -18,7 +18,14 @@ class MemoryRepository(private val dao: MemoryDao) {
     val text = content.trim()
     if (text.isEmpty()) return
     val now = System.currentTimeMillis()
-    dao.insert(MemoryEntity(category = MemoryCategory.normalize(category), content = text, createdAt = now, updatedAt = now))
+    dao.insert(
+      MemoryEntity(
+        category = MemoryCategory.normalize(category),
+        content = text,
+        createdAt = now,
+        updatedAt = now
+      )
+    )
   }
 
   suspend fun edit(id: Long, category: String, content: String) {

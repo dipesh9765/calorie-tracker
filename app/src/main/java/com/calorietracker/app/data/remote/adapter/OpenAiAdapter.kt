@@ -180,7 +180,12 @@ class OpenAiAdapter(
               add(
                 "content",
                 JsonArray().apply {
-                  add(JsonObject().apply { addProperty("type", "text"); addProperty("text", turn.text) })
+                  add(
+                    JsonObject().apply {
+                      addProperty("type", "text")
+                      addProperty("text", turn.text)
+                    }
+                  )
                   add(
                     JsonObject().apply {
                       addProperty("type", "image_url")

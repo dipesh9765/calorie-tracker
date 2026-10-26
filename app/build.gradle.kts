@@ -3,16 +3,17 @@ plugins {
   alias(libs.plugins.kotlin.android)
   alias(libs.plugins.kotlin.compose)
   alias(libs.plugins.ksp)
+  alias(libs.plugins.kover)
 }
 
 android {
   namespace = "com.calorietracker.app"
-  compileSdk = 34
+  compileSdk = 36
 
   defaultConfig {
     applicationId = "com.calorietracker.app"
     minSdk = 26
-    targetSdk = 34
+    targetSdk = 35
     versionCode = 1
     versionName = "1.0"
 
@@ -54,7 +55,8 @@ android {
       }
     }
     release {
-      isMinifyEnabled = false
+      isMinifyEnabled = true
+      isShrinkResources = true
       if (canSign) {
         signingConfig = signingConfigs.getByName("release")
       }
@@ -67,6 +69,11 @@ android {
   }
   kotlinOptions { jvmTarget = "17" }
   buildFeatures { compose = true }
+  lint {
+    abortOnError = true
+    checkDependencies = false
+    lintConfig = file("lint.xml")
+  }
   packaging { resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" } }
 }
 
@@ -99,4 +106,24 @@ dependencies {
   testImplementation(libs.junit)
 
   debugImplementation(libs.androidx.ui.tooling)
+}
+
+kover {
+  reports {
+    filters {
+      excludes {
+        // Compose UI, generated Room/KSP code and DI wiring are exercised by instrumented/UI tests,
+        // not JVM unit tests.
+        packages("com.calorietracker.app.ui.*")
+        classes(
+          "*_Impl",
+          "*_Impl\$*",
+          "*ComposableSingletons*",
+          "*.BuildConfig",
+          "hilt_aggregated_deps.*"
+        )
+      }
+    }
+    verify { rule("Minimum line coverage") { minBound(25) } }
+  }
 }

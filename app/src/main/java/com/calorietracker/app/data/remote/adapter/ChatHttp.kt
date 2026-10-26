@@ -27,8 +27,11 @@ internal fun OkHttpClient.postJson(
     if (!response.isSuccessful) {
       val details =
         try {
-          gson.fromJson(body, JsonObject::class.java).getAsJsonObject("error")?.get("message")?.asString
-            ?: body
+          gson
+            .fromJson(body, JsonObject::class.java)
+            .getAsJsonObject("error")
+            ?.get("message")
+            ?.asString ?: body
         } catch (_: Exception) {
           body.ifBlank { "HTTP ${response.code} ${response.message}" }
         }

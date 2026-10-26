@@ -24,12 +24,7 @@ enum class MemoryOp {
   DELETE
 }
 
-data class MemoryUpdate(
-  val op: MemoryOp,
-  val id: Long?,
-  val category: String,
-  val content: String
-)
+data class MemoryUpdate(val op: MemoryOp, val id: Long?, val category: String, val content: String)
 
 data class DietitianReply(
   val status: ReplyStatus,

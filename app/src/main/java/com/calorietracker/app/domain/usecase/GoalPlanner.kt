@@ -99,12 +99,14 @@ class GoalPlanner(private val calculator: NutritionCalculator = NutritionCalcula
     if (effectiveGoal == GoalType.LOSE) {
       val maxRate = (input.weightKg * MAX_LOSS_FRACTION_PER_WEEK).coerceAtMost(1.0f)
       if (rate > maxRate) {
-        warnings += "Losing more than ${"%.2f".format(maxRate)} kg/week is not recommended at your weight; the pace was reduced."
+        warnings +=
+          "Losing more than ${"%.2f".format(maxRate)} kg/week is not recommended at your weight; the pace was reduced."
         rate = maxRate
       }
     }
     if (effectiveGoal == GoalType.GAIN && rate > MAX_GAIN_PER_WEEK) {
-      warnings += "Gaining more than $MAX_GAIN_PER_WEEK kg/week mostly adds fat; the pace was reduced."
+      warnings +=
+        "Gaining more than $MAX_GAIN_PER_WEEK kg/week mostly adds fat; the pace was reduced."
       rate = MAX_GAIN_PER_WEEK
     }
 
@@ -118,7 +120,8 @@ class GoalPlanner(private val calculator: NutritionCalculator = NutritionCalcula
 
     val floor = if (input.gender.equals("female", ignoreCase = true)) FLOOR_FEMALE else FLOOR_MALE
     if (target < floor) {
-      warnings += "Calories were raised to $floor kcal, the minimum generally considered safe without medical supervision."
+      warnings +=
+        "Calories were raised to $floor kcal, the minimum generally considered safe without medical supervision."
       target = floor
     }
 

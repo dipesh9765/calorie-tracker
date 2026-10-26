@@ -1,0 +1,164 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CyclomaticComplexMethod:AiNutritionRepositoryImpl.kt$AiNutritionRepositoryImpl$override suspend fun parseMealText( mealText: String, provider: AiProviderType, apiKey: String, modelName: String, todayContext: String, yesterdayContext: String, memoryContext: String, profile: UserProfile ): Result&lt;Pair&lt;Meal, String&gt;&gt;</ID>
+    <ID>CyclomaticComplexMethod:DietitianPrompt.kt$DietitianReplyParser$fun parse(raw: String, todayIso: String): DietitianReply</ID>
+    <ID>CyclomaticComplexMethod:GeminiAdapter.kt$GeminiAdapter$override suspend fun parseMeal( inputText: String, apiKey: String, systemInstruction: String, modelName: String ): String</ID>
+    <ID>CyclomaticComplexMethod:MainActivity.kt$MainActivity$@Composable fun MainAppContainer()</ID>
+    <ID>CyclomaticComplexMethod:OpenAiAdapter.kt$OpenAiAdapter$override suspend fun parseMeal( inputText: String, apiKey: String, systemInstruction: String, modelName: String ): String</ID>
+    <ID>CyclomaticComplexMethod:ProfileDetailsCard.kt$@Composable fun ProfileDetailsCard( profile: UserProfile, weightHistory: List&lt;WeightEntity&gt;, onSave: (UserProfile) -&gt; Unit )</ID>
+    <ID>InstanceOfCheckForException:AiNutritionRepositoryImpl.kt$AiNutritionRepositoryImpl$e is java.net.SocketTimeoutException</ID>
+    <ID>InstanceOfCheckForException:AiNutritionRepositoryImpl.kt$AiNutritionRepositoryImpl$e is java.net.UnknownHostException</ID>
+    <ID>LongMethod:AiNutritionRepositoryImpl.kt$AiNutritionRepositoryImpl$override suspend fun parseMealText( mealText: String, provider: AiProviderType, apiKey: String, modelName: String, todayContext: String, yesterdayContext: String, memoryContext: String, profile: UserProfile ): Result&lt;Pair&lt;Meal, String&gt;&gt;</ID>
+    <ID>LongMethod:CoachNotificationWorker.kt$CoachNotificationWorker$override suspend fun doWork(): Result</ID>
+    <ID>LongMethod:GeminiAdapter.kt$GeminiAdapter$override suspend fun parseMeal( inputText: String, apiKey: String, systemInstruction: String, modelName: String ): String</ID>
+    <ID>LongMethod:OpenAiAdapter.kt$OpenAiAdapter$override suspend fun parseMeal( inputText: String, apiKey: String, systemInstruction: String, modelName: String ): String</ID>
+    <ID>LongParameterList:AiRepository.kt$AiRepository$( inputText: String, provider: String, apiKey: String, modelName: String = "", todayContext: String = "", yesterdayContext: String = "", memoryContext: String = "", profile: UserProfile = UserProfile() )</ID>
+    <ID>LongParameterList:GoalPlannerTest.kt$GoalPlannerTest$( weight: Float = 80f, height: Float = 175f, age: Int = 30, gender: String = "Male", activity: ActivityLevel = ActivityLevel.MODERATE, goal: GoalType = GoalType.LOSE, target: Float = 72f, rate: Float = 0.5f )</ID>
+    <ID>LongParameterList:IAiNutritionRepository.kt$IAiNutritionRepository$( mealText: String, provider: AiProviderType, apiKey: String, modelName: String = "", todayContext: String = "", yesterdayContext: String = "", memoryContext: String = "", profile: UserProfile = UserProfile() )</ID>
+    <ID>LongParameterList:IAiNutritionRepository.kt$IAiNutritionRepository$( provider: AiProviderType, apiKey: String, modelName: String = "", userName: String, todayContext: String = "", yesterdayContext: String = "", targetCalories: Int, targetProtein: Float, memoryContext: String = "", cuisine: String = "Indian" )</ID>
+    <ID>LoopWithTooManyJumpStatements:MemoryRepository.kt$MemoryRepository$for</ID>
+    <ID>MagicNumber:ClaudeAdapter.kt$ClaudeAdapter$1000</ID>
+    <ID>MagicNumber:ClaudeAdapter.kt$ClaudeAdapter$1500</ID>
+    <ID>MagicNumber:ClaudeAdapter.kt$ClaudeAdapter$60</ID>
+    <ID>MagicNumber:CoachNotificationWorker.kt$CoachNotificationWorker$23</ID>
+    <ID>MagicNumber:CoachNotificationWorker.kt$CoachNotificationWorker$5</ID>
+    <ID>MagicNumber:DeepSeekAdapter.kt$DeepSeekAdapter$60</ID>
+    <ID>MagicNumber:DietitianChatViewModel.kt$DietitianChatViewModel$6</ID>
+    <ID>MagicNumber:DietitianPrompt.kt$DietitianReplyParser$300f</ID>
+    <ID>MagicNumber:DietitianPrompt.kt$DietitianReplyParser$30f</ID>
+    <ID>MagicNumber:GeminiAdapter.kt$GeminiAdapter$60</ID>
+    <ID>MagicNumber:GoalPlanner.kt$ActivityLevel.ACTIVE$1.725f</ID>
+    <ID>MagicNumber:GoalPlanner.kt$ActivityLevel.LIGHT$1.375f</ID>
+    <ID>MagicNumber:GoalPlanner.kt$ActivityLevel.MODERATE$1.55f</ID>
+    <ID>MagicNumber:GoalPlanner.kt$ActivityLevel.SEDENTARY$1.2f</ID>
+    <ID>MagicNumber:GoalPlanner.kt$ActivityLevel.VERY_ACTIVE$1.9f</ID>
+    <ID>MagicNumber:GoalPlanner.kt$GoalPlanner$0.035f</ID>
+    <ID>MagicNumber:GoalPlanner.kt$GoalPlanner$1.6f</ID>
+    <ID>MagicNumber:GoalPlanner.kt$GoalPlanner$1.8f</ID>
+    <ID>MagicNumber:GoalPlanner.kt$GoalPlanner$10f</ID>
+    <ID>MagicNumber:GoalPlanner.kt$GoalPlanner$5f</ID>
+    <ID>MagicNumber:GoalPlanner.kt$GoalPlanner$7f</ID>
+    <ID>MagicNumber:MainActivity.kt$MainActivity$3</ID>
+    <ID>MagicNumber:MainActivity.kt$MainActivity$4</ID>
+    <ID>MagicNumber:NutritionCalculator.kt$NutritionCalculator$1.2f</ID>
+    <ID>MagicNumber:NutritionCalculator.kt$NutritionCalculator$1.38f</ID>
+    <ID>MagicNumber:NutritionCalculator.kt$NutritionCalculator$1.3f</ID>
+    <ID>MagicNumber:NutritionCalculator.kt$NutritionCalculator$1.55f</ID>
+    <ID>MagicNumber:NutritionCalculator.kt$NutritionCalculator$1.8f</ID>
+    <ID>MagicNumber:NutritionCalculator.kt$NutritionCalculator$10</ID>
+    <ID>MagicNumber:NutritionCalculator.kt$NutritionCalculator$140f</ID>
+    <ID>MagicNumber:NutritionCalculator.kt$NutritionCalculator$1500</ID>
+    <ID>MagicNumber:NutritionCalculator.kt$NutritionCalculator$161</ID>
+    <ID>MagicNumber:NutritionCalculator.kt$NutritionCalculator$3</ID>
+    <ID>MagicNumber:NutritionCalculator.kt$NutritionCalculator$4</ID>
+    <ID>MagicNumber:NutritionCalculator.kt$NutritionCalculator$5</ID>
+    <ID>MagicNumber:NutritionCalculator.kt$NutritionCalculator$6.25</ID>
+    <ID>MagicNumber:OpenAiAdapter.kt$OpenAiAdapter$60</ID>
+    <ID>MagicNumber:WeightRepository.kt$WeightRepository$0.05f</ID>
+    <ID>MagicNumber:WeightRepository.kt$WeightRepository$30</ID>
+    <ID>MaxLineLength:AiNutritionRepositoryImpl.kt$AiNutritionRepositoryImpl$"Network request timed out while contacting ${provider.displayName}. Please check your connection and retry."</ID>
+    <ID>MaxLineLength:CoachNotificationWorker.kt$CoachNotificationWorker$"$userName, you have logged $todayCalories / ${profile.targetDailyCalories} kcal and ${todayProtein.toInt()} / ${profile.targetDailyProteinGrams.toInt()}g protein today. Open CalorieTracker AI to log your next meal."</ID>
+    <ID>MaxLineLength:CoachNotificationWorker.kt$CoachNotificationWorker$"${yesterdayMeals.sumOf { it.calories }} kcal, ${yesterdayMeals.sumOf { it.proteinGrams.toDouble() }}g protein. Foods logged: "</ID>
+    <ID>MaxLineLength:DeleteConfirmationDialog.kt$"Are you sure you want to delete \"$foodName\" logged for $dateIso? Your daily calories and macro totals will be updated automatically."</ID>
+    <ID>MaxLineLength:DietitianChatScreen.kt$"P ${"%.0f".format(meal.proteinGrams)}g · C ${"%.0f".format(meal.carbsGrams)}g · F ${"%.0f".format(meal.fatGrams)}g · ${meal.dateIso}"</ID>
+    <ID>MaxLineLength:DietitianChatScreen.kt$"Tell me what you ate or snap a photo of your plate. I'll ask if something's unclear, and I remember your supplements and habits. Try one of the shortcuts below."</ID>
+    <ID>MaxLineLength:HomeScreen.kt$"Goal: ${userProfile.weightKg.toInt()}kg → ${userProfile.targetWeightKg.toInt()}kg (${userProfile.targetDailyCalories} kcal)"</ID>
+    <ID>MaxLineLength:HomeScreen.kt$"You need ${remainingP.toInt()}g more protein to hit your ${userProfile.targetDailyProteinGrams.toInt()}g target today. Ask your dietitian for ideas that fit the rest of your day."</ID>
+    <ID>MaxLineLength:MainActivity.kt$MainActivity$"Current Total: $todayTotalCalories kcal, ${todayTotalProtein}g Protein, ${todayTotalCarbs}g Carbs, ${todayTotalFat}g Fat. Foods logged: "</ID>
+    <ID>MaxLineLength:MainActivity.kt$MainActivity$"Total: ${yesterdayMeals.sumOf { it.calories }} kcal, ${yesterdayMeals.sumOf { it.proteinGrams.toDouble() }}g Protein, ${yesterdayMeals.sumOf { it.carbsGrams.toDouble() }}g Carbs, ${yesterdayMeals.sumOf { it.fatGrams.toDouble() }}g Fat. Foods logged: "</ID>
+    <ID>MaxLineLength:MemoryScreen.kt$"Nothing yet. Add things like your protein powder and scoop size, supplements, allergies, or habits, or just mention them in chat and I'll remember."</ID>
+    <ID>PrintStackTrace:DataExporter.kt$DataExporter$e</ID>
+    <ID>SwallowedException:DietitianChatRepository.kt$DietitianChatRepository$e: java.net.SocketTimeoutException</ID>
+    <ID>SwallowedException:DietitianChatRepository.kt$DietitianChatRepository$e: java.net.UnknownHostException</ID>
+    <ID>ThrowsCount:GeminiAdapter.kt$GeminiAdapter$private fun executeGeminiCall( url: String, apiKey: String, requestBody: okhttp3.RequestBody ): String</ID>
+    <ID>TooGenericExceptionCaught:AiNutritionRepositoryImpl.kt$AiNutritionRepositoryImpl$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:DataExporter.kt$DataExporter$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:DietitianChatRepository.kt$DietitianChatRepository$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:GeminiAdapter.kt$GeminiAdapter$e: Exception</ID>
+    <ID>TooGenericExceptionThrown:ChatHttp.kt$throw Exception("$providerName API Error (${response.code}): $details")</ID>
+    <ID>TooGenericExceptionThrown:ChatHttp.kt$throw Exception("Empty response received from $providerName API.")</ID>
+    <ID>TooGenericExceptionThrown:ClaudeAdapter.kt$ClaudeAdapter$throw Exception("Claude API Error (${response.code}): $errorDetails")</ID>
+    <ID>TooGenericExceptionThrown:ClaudeAdapter.kt$ClaudeAdapter$throw Exception("Claude returned empty content array.")</ID>
+    <ID>TooGenericExceptionThrown:ClaudeAdapter.kt$ClaudeAdapter$throw Exception("Claude returned no text content.")</ID>
+    <ID>TooGenericExceptionThrown:ClaudeAdapter.kt$ClaudeAdapter$throw Exception("Empty response received from Claude API.")</ID>
+    <ID>TooGenericExceptionThrown:ClaudeAdapter.kt$ClaudeAdapter$throw Exception("Invalid Claude response structure: missing 'content' array.")</ID>
+    <ID>TooGenericExceptionThrown:DeepSeekAdapter.kt$DeepSeekAdapter$throw Exception("DeepSeek API Error (${response.code}): $errorDetails")</ID>
+    <ID>TooGenericExceptionThrown:DeepSeekAdapter.kt$DeepSeekAdapter$throw Exception("DeepSeek returned no content.")</ID>
+    <ID>TooGenericExceptionThrown:DeepSeekAdapter.kt$DeepSeekAdapter$throw Exception("DeepSeek returned zero choices.")</ID>
+    <ID>TooGenericExceptionThrown:DeepSeekAdapter.kt$DeepSeekAdapter$throw Exception("Empty response received from DeepSeek API.")</ID>
+    <ID>TooGenericExceptionThrown:DeepSeekAdapter.kt$DeepSeekAdapter$throw Exception("Invalid DeepSeek response structure: missing 'choices' array.")</ID>
+    <ID>TooGenericExceptionThrown:GeminiAdapter.kt$GeminiAdapter$throw Exception("Empty response received from Gemini API.")</ID>
+    <ID>TooGenericExceptionThrown:GeminiAdapter.kt$GeminiAdapter$throw Exception("Gemini API Error (${response.code}): $errorDetails")</ID>
+    <ID>TooGenericExceptionThrown:GeminiAdapter.kt$GeminiAdapter$throw Exception("Gemini candidate content has empty 'parts'.")</ID>
+    <ID>TooGenericExceptionThrown:GeminiAdapter.kt$GeminiAdapter$throw Exception("Gemini candidate content missing 'parts' array.")</ID>
+    <ID>TooGenericExceptionThrown:GeminiAdapter.kt$GeminiAdapter$throw Exception("Gemini part missing 'text' field.")</ID>
+    <ID>TooGenericExceptionThrown:GeminiAdapter.kt$GeminiAdapter$throw Exception("Gemini response missing 'content' in candidate.")</ID>
+    <ID>TooGenericExceptionThrown:GeminiAdapter.kt$GeminiAdapter$throw Exception("Gemini returned no content (it may have blocked the image).")</ID>
+    <ID>TooGenericExceptionThrown:GeminiAdapter.kt$GeminiAdapter$throw Exception("Gemini returned zero candidates.")</ID>
+    <ID>TooGenericExceptionThrown:GeminiAdapter.kt$GeminiAdapter$throw Exception("Invalid Gemini response structure: missing 'candidates' array.")</ID>
+    <ID>TooGenericExceptionThrown:OpenAiAdapter.kt$OpenAiAdapter$throw Exception("Empty response received from OpenAI API.")</ID>
+    <ID>TooGenericExceptionThrown:OpenAiAdapter.kt$OpenAiAdapter$throw Exception("Invalid OpenAI response structure: missing 'choices' array.")</ID>
+    <ID>TooGenericExceptionThrown:OpenAiAdapter.kt$OpenAiAdapter$throw Exception("OpenAI API Error (${response.code}): $errorDetails")</ID>
+    <ID>TooGenericExceptionThrown:OpenAiAdapter.kt$OpenAiAdapter$throw Exception("OpenAI returned no content.")</ID>
+    <ID>TooGenericExceptionThrown:OpenAiAdapter.kt$OpenAiAdapter$throw Exception("OpenAI returned zero choices.")</ID>
+    <ID>UseCheckOrError:UseCasesTest.kt$UseCasesTest.FakeMealRepository$throw IllegalStateException("Database write error: disk full")</ID>
+    <ID>UseRequire:ChatHttp.kt$throw IllegalArgumentException( "$providerName API Key is blank. Please enter your API key in Profile settings." )</ID>
+    <ID>UseRequire:ClaudeAdapter.kt$ClaudeAdapter$throw IllegalArgumentException( "Claude API Key is blank. Please enter your API key in Profile settings." )</ID>
+    <ID>UseRequire:DeepSeekAdapter.kt$DeepSeekAdapter$throw IllegalArgumentException( "DeepSeek API Key is blank. Please enter your API key in Profile settings." )</ID>
+    <ID>UseRequire:DeepSeekAdapter.kt$DeepSeekAdapter$throw IllegalArgumentException( "DeepSeek can't read images. Switch to Gemini, OpenAI or Claude in Profile to send photos." )</ID>
+    <ID>UseRequire:GeminiAdapter.kt$GeminiAdapter$throw IllegalArgumentException( "Gemini API Key is blank. Please enter your API key in Profile settings." )</ID>
+    <ID>UseRequire:OpenAiAdapter.kt$OpenAiAdapter$throw IllegalArgumentException( "OpenAI API Key is blank. Please enter your API key in Profile settings." )</ID>
+    <ID>WildcardImport:AiAdapterTest.kt$import org.junit.Assert.*</ID>
+    <ID>WildcardImport:AiNutritionRepositoryEdgeCaseTest.kt$import org.junit.Assert.*</ID>
+    <ID>WildcardImport:AiNutritionRepositoryImpl.kt$import com.calorietracker.app.data.remote.adapter.*</ID>
+    <ID>WildcardImport:AnalyticsScreen.kt$import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:AnalyticsScreen.kt$import androidx.compose.material3.*</ID>
+    <ID>WildcardImport:AnalyticsScreen.kt$import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:AnalyticsScreen.kt$import com.calorietracker.app.ui.theme.*</ID>
+    <ID>WildcardImport:DataExporterTest.kt$import org.junit.Assert.*</ID>
+    <ID>WildcardImport:DataMappingAndEntityTest.kt$import org.junit.Assert.*</ID>
+    <ID>WildcardImport:DayDetailsDialog.kt$import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:DayDetailsDialog.kt$import androidx.compose.material3.*</ID>
+    <ID>WildcardImport:DayDetailsDialog.kt$import com.calorietracker.app.ui.theme.*</ID>
+    <ID>WildcardImport:DeleteConfirmationDialog.kt$import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:DeleteConfirmationDialog.kt$import androidx.compose.material3.*</ID>
+    <ID>WildcardImport:DietitianChatScreen.kt$import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:DietitianChatScreen.kt$import androidx.compose.material3.*</ID>
+    <ID>WildcardImport:DietitianChatScreen.kt$import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:DietitianChatScreen.kt$import com.calorietracker.app.ui.theme.*</ID>
+    <ID>WildcardImport:HomeScreen.kt$import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:HomeScreen.kt$import androidx.compose.material3.*</ID>
+    <ID>WildcardImport:HomeScreen.kt$import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:HomeScreen.kt$import com.calorietracker.app.ui.theme.*</ID>
+    <ID>WildcardImport:HomeViewModel.kt$import kotlinx.coroutines.flow.*</ID>
+    <ID>WildcardImport:LiquidBubbleProgress.kt$import androidx.compose.animation.core.*</ID>
+    <ID>WildcardImport:LiquidBubbleProgress.kt$import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:LogHistoryScreen.kt$import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:LogHistoryScreen.kt$import androidx.compose.material3.*</ID>
+    <ID>WildcardImport:LogHistoryScreen.kt$import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:MacroBar.kt$import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:MainActivity.kt$import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:MainActivity.kt$import androidx.compose.material3.*</ID>
+    <ID>WildcardImport:MainActivity.kt$import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:MainActivity.kt$import com.calorietracker.app.ui.screens.*</ID>
+    <ID>WildcardImport:MealDao.kt$import androidx.room.*</ID>
+    <ID>WildcardImport:MemoryScreen.kt$import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:MemoryScreen.kt$import androidx.compose.material3.*</ID>
+    <ID>WildcardImport:MemoryScreen.kt$import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:MemoryScreen.kt$import com.calorietracker.app.ui.theme.*</ID>
+    <ID>WildcardImport:NetworkTimeoutTest.kt$import org.junit.Assert.*</ID>
+    <ID>WildcardImport:ProfileDetailsCard.kt$import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:ProfileDetailsCard.kt$import androidx.compose.material3.*</ID>
+    <ID>WildcardImport:ProfileDetailsCard.kt$import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:ProfileDetailsCard.kt$import com.calorietracker.app.ui.theme.*</ID>
+    <ID>WildcardImport:ProfileScreen.kt$import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:ProfileScreen.kt$import androidx.compose.material3.*</ID>
+    <ID>WildcardImport:ProfileScreen.kt$import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:ProfileScreen.kt$import com.calorietracker.app.ui.theme.*</ID>
+    <ID>WildcardImport:RoomDatabaseTest.kt$import org.junit.Assert.*</ID>
+    <ID>WildcardImport:StructuredOutputTest.kt$import org.junit.Assert.*</ID>
+    <ID>WildcardImport:UseCasesTest.kt$import org.junit.Assert.*</ID>
+  </CurrentIssues>
+</SmellBaseline>

@@ -92,9 +92,13 @@ object DietitianReplyParser {
 
     val message = obj.str("message").orEmpty()
     val questions =
-      obj.get("questions")?.takeIf { it.isJsonArray }?.asJsonArray?.mapNotNull {
-        runCatching { it.asString }.getOrNull()?.trim()?.takeIf { q -> q.isNotEmpty() }
-      } ?: emptyList()
+      obj
+        .get("questions")
+        ?.takeIf { it.isJsonArray }
+        ?.asJsonArray
+        ?.mapNotNull {
+          runCatching { it.asString }.getOrNull()?.trim()?.takeIf { q -> q.isNotEmpty() }
+        } ?: emptyList()
 
     val mealObj = obj.get("meal")?.takeIf { it.isJsonObject }?.asJsonObject
     val meal =
@@ -121,21 +125,29 @@ object DietitianReplyParser {
     if (status == ReplyStatus.FINAL && (meal == null || meal.calories <= 0)) {
       status = if (questions.isNotEmpty()) ReplyStatus.ASK else ReplyStatus.CHAT
     }
-    if (status == ReplyStatus.ASK && questions.isEmpty() && message.isBlank()) status = ReplyStatus.CHAT
+    if (status == ReplyStatus.ASK && questions.isEmpty() && message.isBlank())
+      status = ReplyStatus.CHAT
 
     val updates =
-      obj.get("memoryUpdates")?.takeIf { it.isJsonArray }?.asJsonArray?.mapNotNull { el ->
-        val o = el.takeIf { it.isJsonObject }?.asJsonObject ?: return@mapNotNull null
-        val op =
-          runCatching { MemoryOp.valueOf(o.str("op")?.uppercase() ?: "") }.getOrNull()
-            ?: return@mapNotNull null
-        MemoryUpdate(
-          op = op,
-          id = o.get("id")?.takeIf { it.isJsonPrimitive }?.let { runCatching { it.asDouble.toLong() }.getOrNull() },
-          category = o.str("category") ?: "Other",
-          content = o.str("content").orEmpty()
-        )
-      } ?: emptyList()
+      obj
+        .get("memoryUpdates")
+        ?.takeIf { it.isJsonArray }
+        ?.asJsonArray
+        ?.mapNotNull { el ->
+          val o = el.takeIf { it.isJsonObject }?.asJsonObject ?: return@mapNotNull null
+          val op =
+            runCatching { MemoryOp.valueOf(o.str("op")?.uppercase() ?: "") }.getOrNull()
+              ?: return@mapNotNull null
+          MemoryUpdate(
+            op = op,
+            id =
+              o.get("id")
+                ?.takeIf { it.isJsonPrimitive }
+                ?.let { runCatching { it.asDouble.toLong() }.getOrNull() },
+            category = o.str("category") ?: "Other",
+            content = o.str("content").orEmpty()
+          )
+        } ?: emptyList()
 
     val weight = obj.num("weightKg").toFloat().takeIf { it in 30f..300f }
 
@@ -155,14 +167,21 @@ object DietitianReplyParser {
     val start = raw.indexOf('{')
     val end = raw.lastIndexOf('}')
     if (start == -1 || end <= start) return null
-    return runCatching { JsonParser.parseString(raw.substring(start, end + 1)).asJsonObject }.getOrNull()
+    return runCatching { JsonParser.parseString(raw.substring(start, end + 1)).asJsonObject }
+      .getOrNull()
   }
 
   private fun JsonObject.str(key: String): String? =
-    get(key)?.takeIf { it.isJsonPrimitive }?.asString?.trim()?.takeIf { it.isNotEmpty() && it != "null" }
+    get(key)
+      ?.takeIf { it.isJsonPrimitive }
+      ?.asString
+      ?.trim()
+      ?.takeIf { it.isNotEmpty() && it != "null" }
 
   private fun JsonObject.num(key: String): Double =
-    get(key)?.takeIf { it.isJsonPrimitive }?.let { e: JsonElement ->
-      runCatching { e.asDouble }.getOrNull() ?: e.asString.toDoubleOrNull()
-    } ?: 0.0
+    get(key)
+      ?.takeIf { it.isJsonPrimitive }
+      ?.let { e: JsonElement ->
+        runCatching { e.asDouble }.getOrNull() ?: e.asString.toDoubleOrNull()
+      } ?: 0.0
 }

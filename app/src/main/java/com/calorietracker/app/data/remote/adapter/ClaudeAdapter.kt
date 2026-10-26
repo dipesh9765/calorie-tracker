@@ -118,7 +118,12 @@ class ClaudeAdapter(
             }
           )
         }
-        content.add(JsonObject().apply { addProperty("type", "text"); addProperty("text", turn.text) })
+        content.add(
+          JsonObject().apply {
+            addProperty("type", "text")
+            addProperty("text", turn.text)
+          }
+        )
         messages.add(
           JsonObject().apply {
             addProperty("role", if (turn.role == ChatRole.USER) "user" else "assistant")
