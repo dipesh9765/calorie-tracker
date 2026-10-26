@@ -36,5 +36,7 @@ data class DietitianReply(
   val message: String,
   val questions: List<String> = emptyList(),
   val meal: Meal? = null,
-  val memoryUpdates: List<MemoryUpdate> = emptyList()
+  val memoryUpdates: List<MemoryUpdate> = emptyList(),
+  /** Current body weight if the user reported it in this message. */
+  val weightKg: Float? = null
 )

@@ -5,6 +5,8 @@ import android.util.Base64
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -14,6 +16,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Send
@@ -34,8 +38,13 @@ import com.calorietracker.app.presentation.ChatMessageUi
 import com.calorietracker.app.presentation.MealCardState
 import com.calorietracker.app.ui.theme.*
 
-private val SUGGESTIONS =
-  listOf("2 rotis with dal and sabzi", "Log my usual protein shake", "What should I eat for dinner?")
+private val QUICK_ACTIONS =
+  listOf(
+    "How am I doing today?",
+    "What should I eat next?",
+    "Review my week",
+    "I weighed in today"
+  )
 
 @Composable
 fun DietitianChatScreen(
@@ -43,8 +52,11 @@ fun DietitianChatScreen(
   isLoading: Boolean,
   pendingImage: ChatImage?,
   userName: String,
+  setupHint: String?,
+  onSetupClick: () -> Unit,
   onSend: (String) -> Unit,
-  onPickImage: () -> Unit,
+  onTakePhoto: () -> Unit,
+  onPickFromGallery: () -> Unit,
   onClearImage: () -> Unit,
   onSaveMeal: (Long) -> Unit,
   onOpenMemory: () -> Unit,
@@ -81,10 +93,18 @@ fun DietitianChatScreen(
       contentPadding = PaddingValues(16.dp),
       verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-      if (messages.isEmpty()) {
+      if (setupHint != null) {
         item {
-          EmptyState(userName = userName, onSuggestion = { onSend(it) })
+          Card(
+            colors = CardDefaults.cardColors(containerColor = AccentOrange.copy(alpha = 0.15f)),
+            modifier = Modifier.fillMaxWidth().clickable(onClick = onSetupClick)
+          ) {
+            Text(setupHint, color = AccentOrange, fontSize = 13.sp, modifier = Modifier.padding(12.dp))
+          }
         }
+      }
+      if (messages.isEmpty()) {
+        item { EmptyState(userName = userName) }
       }
       items(messages, key = { it.id }) { msg ->
         MessageBubble(msg = msg, onSaveMeal = { onSaveMeal(msg.id) })
@@ -113,11 +133,46 @@ fun DietitianChatScreen(
     }
 
     Row(
+      modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 4.dp),
+      horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+      QUICK_ACTIONS.forEach { action ->
+        AssistChip(
+          onClick = { onSend(action) },
+          enabled = !isLoading,
+          label = { Text(action, fontSize = 12.sp) },
+          colors = AssistChipDefaults.assistChipColors(containerColor = SurfaceCard, labelColor = TextPrimary)
+        )
+      }
+    }
+
+    Row(
       modifier = Modifier.fillMaxWidth().background(SurfaceDark).padding(8.dp),
       verticalAlignment = Alignment.CenterVertically
     ) {
-      IconButton(onClick = onPickImage, enabled = !isLoading) {
-        Icon(Icons.Default.AddPhotoAlternate, contentDescription = "Attach photo", tint = PrimaryBlue)
+      var attachMenuOpen by remember { mutableStateOf(false) }
+      Box {
+        IconButton(onClick = { attachMenuOpen = true }, enabled = !isLoading) {
+          Icon(Icons.Default.AddPhotoAlternate, contentDescription = "Attach photo", tint = PrimaryBlue)
+        }
+        DropdownMenu(expanded = attachMenuOpen, onDismissRequest = { attachMenuOpen = false }) {
+          DropdownMenuItem(
+            text = { Text("Take a photo") },
+            leadingIcon = { Icon(Icons.Default.PhotoCamera, contentDescription = null) },
+            onClick = {
+              attachMenuOpen = false
+              onTakePhoto()
+            }
+          )
+          DropdownMenuItem(
+            text = { Text("Choose from gallery") },
+            leadingIcon = { Icon(Icons.Default.PhotoLibrary, contentDescription = null) },
+            onClick = {
+              attachMenuOpen = false
+              onPickFromGallery()
+            }
+          )
+        }
       }
       OutlinedTextField(
         value = input,
@@ -149,24 +204,15 @@ fun DietitianChatScreen(
 }
 
 @Composable
-private fun EmptyState(userName: String, onSuggestion: (String) -> Unit) {
+private fun EmptyState(userName: String) {
   Column(modifier = Modifier.fillMaxWidth().padding(top = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
     Text("Hi $userName 👋", color = TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold)
     Spacer(Modifier.height(6.dp))
     Text(
-      "Tell me what you ate or snap a photo. I'll ask if something's unclear, and I remember your supplements and habits.",
+      "Tell me what you ate or snap a photo of your plate. I'll ask if something's unclear, and I remember your supplements and habits. Try one of the shortcuts below.",
       color = TextSecondary,
       fontSize = 14.sp
     )
-    Spacer(Modifier.height(16.dp))
-    SUGGESTIONS.forEach { s ->
-      AssistChip(
-        onClick = { onSuggestion(s) },
-        label = { Text(s) },
-        modifier = Modifier.padding(vertical = 2.dp),
-        colors = AssistChipDefaults.assistChipColors(containerColor = SurfaceCard, labelColor = TextPrimary)
-      )
-    }
   }
 }
 

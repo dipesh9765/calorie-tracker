@@ -57,7 +57,7 @@ class CoachNotificationWorker(private val context: Context, params: WorkerParame
         val todayCarbs = todayMeals.sumOf { it.carbsGrams.toDouble() }.toFloat()
         val todayFat = todayMeals.sumOf { it.fatGrams.toDouble() }.toFloat()
 
-        val userName = if (profile.name.isNotBlank()) profile.name else "Dipesh"
+        val userName = profile.displayName
 
         val todaySummary =
           if (todayMeals.isNotEmpty()) {
@@ -104,7 +104,8 @@ class CoachNotificationWorker(private val context: Context, params: WorkerParame
             yesterdayContext = yesterdaySummary,
             targetCalories = profile.targetDailyCalories,
             targetProtein = profile.targetDailyProteinGrams,
-            memoryContext = MemoryRepository.formatForPrompt(memories, emptyText = "")
+            memoryContext = MemoryRepository.formatForPrompt(memories, emptyText = ""),
+            cuisine = profile.cuisine
           )
 
         val notificationMessage =

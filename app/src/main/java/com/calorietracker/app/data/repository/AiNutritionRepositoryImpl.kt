@@ -1,6 +1,7 @@
 package com.calorietracker.app.data.repository
 
 import com.calorietracker.app.data.remote.adapter.*
+import com.calorietracker.app.data.model.UserProfile
 import com.calorietracker.app.domain.model.AiProviderType
 import com.calorietracker.app.domain.model.Meal
 import com.calorietracker.app.domain.repository.IAiNutritionRepository
@@ -33,7 +34,8 @@ class AiNutritionRepositoryImpl(
     modelName: String,
     todayContext: String,
     yesterdayContext: String,
-    memoryContext: String
+    memoryContext: String,
+    profile: UserProfile
   ): Result<Pair<Meal, String>> =
     withContext(Dispatchers.IO) {
       try {
@@ -54,7 +56,7 @@ class AiNutritionRepositoryImpl(
 
         val dynamicSystemInstruction =
           """
-                You are an expert Indian Clinical & Sports Nutritionist specializing in Indian cuisine, specifically central Indian / Nagpur local diet (e.g. rotis, tarri poha, saoji, sabudana khichdi, dahi samosa, chicken breast/curry, Nakpro whey, Beast Life creatine, etc.).
+                You are an expert Clinical & Sports Nutritionist specializing in ${profile.cuisine} cuisine, advising ${profile.displayName} (diet: ${profile.dietType}).
                 
                 Current System Context:
                 - Today's Date: $todayIso ($dayOfWeek)
@@ -64,9 +66,9 @@ class AiNutritionRepositoryImpl(
 
                 ${if (memoryContext.isNotBlank()) "What you remember about the user (use these facts, e.g. their usual protein powder and scoop size, instead of guessing):\n$memoryContext\n" else ""}
                 Multi-Day AI Coaching Advice Rules for "advice":
-                - Always evaluate the combined multi-day context of yesterday's consumption AND today's current totals against the user's daily targets (180g Protein, 2,300 kcal deficit).
-                - Compare today's protein/calorie trajectory against yesterday. For example, if yesterday had high protein and today is lagging, acknowledge yesterday's solid intake and recommend specific food items (e.g., Nakpro Whey, 150g chicken breast, eggs) to bridge today's remaining gap.
-                - Keep advice highly encouraging, actionable, concise, and grounded in Indian meal options.
+                - Always evaluate the combined multi-day context of yesterday's consumption AND today's current totals against the user's daily targets (${profile.targetDailyProteinGrams.toInt()}g protein, ${profile.targetDailyCalories} kcal).
+                - Compare today's protein/calorie trajectory against yesterday. For example, if yesterday had high protein and today is lagging, acknowledge yesterday's solid intake and recommend specific food items that fit their cuisine, diet type and remembered supplements to bridge today's remaining gap.
+                - Keep advice highly encouraging, actionable, concise, and grounded in ${profile.cuisine} meal options.
                 
                 Date & Action Parsing Rules:
                 - Analyze user input for relative date references (e.g. "yesterday", "last night", "2 days ago", "on Sept 8").
@@ -76,18 +78,11 @@ class AiNutritionRepositoryImpl(
                 - Identify "action": set to "UPDATE" if user explicitly asks to correct/change an existing meal (e.g. "update yesterday's chicken curry to 400 kcal"), otherwise set to "CREATE".
 
                 Brand & Packaged Product Nutrition Guidelines:
-                - If the user specifies a brand, commercial product, or restaurant chain (e.g. "Nakpro Whey", "Amul High Protein Lassi", "Haldiram's Poha", "MuscleBlaze Biozyme Whey", "Epigamia Greek Yogurt", "Subway Chicken Sub"), reference official nutritional label values for that exact product and serving size.
-                - For Nakpro Whey (Perform/Impact/Gold Concentrate vs Platinum Isolate): Standard scoop is ~33g–37g (~124-130 kcal, 24g protein, 3.3g carbs, 1.8g fat). If user specifies a larger scoop size (e.g. 40g or 46g), scale calories & macros pro-rata (~155-175 kcal, ~28-30g protein).
-                - Format "foodName" to clearly state the brand and item (e.g., "Nakpro Whey (1 Scoop / 33-40g)", "Amul High Protein Lassi (200ml)").
-                - For home-cooked meals without a brand specified, use standard Indian household portion estimates.
+                - If the user specifies a brand, commercial product, or restaurant chain (protein powders, packaged snacks, restaurant chains), reference official nutritional label values for that exact product and serving size.
+                - Format "foodName" to clearly state the brand and item (e.g., "Whey Protein (1 scoop / 33g)", "High Protein Lassi (200ml)").
+                - For home-cooked meals without a brand specified, use standard ${profile.cuisine} household portion estimates.
 
-                Estimate portions by realistic Indian household standards:
-                - 1 average Roti/Chapati (wheat) = ~80-90 kcal, 3g protein, 15g carbs, 1.5g fat.
-                - 1 katori dal/sabzi = ~150 kcal.
-                - 1 scoop Nakpro Whey Protein (33g-40g scoop) = ~125-130 kcal, 24g protein, 3.3g carbs, 1.8g fat.
-                - 1 plate Tarri Poha = ~280-320 kcal.
-                - 100g Chicken Breast (cooked dry/curry) = ~165-190 kcal, 31g protein.
-                - 1 Samosa with Dahi = ~260-300 kcal.
+                Estimate portions by realistic ${profile.cuisine} household standards, and prefer the user's remembered products and portion sizes over generic values.
 
                 ALWAYS output strictly VALID JSON only. No markdown ticks, no conversational filler.
                 JSON format:
@@ -101,7 +96,7 @@ class AiNutritionRepositoryImpl(
                   "carbsGrams": 40.0,
                   "fatGrams": 12.0,
                   "mealCategory": "Lunch",
-                  "advice": "Short nutritional tip for achieving 180g daily protein within 2300 kcal deficit."
+                  "advice": "Short nutritional tip for reaching today's protein and calorie targets."
                 }
             """
             .trimIndent()
@@ -170,7 +165,8 @@ class AiNutritionRepositoryImpl(
     yesterdayContext: String,
     targetCalories: Int,
     targetProtein: Float,
-    memoryContext: String
+    memoryContext: String,
+    cuisine: String
   ): Result<String> =
     withContext(Dispatchers.IO) {
       try {
@@ -186,7 +182,7 @@ class AiNutritionRepositoryImpl(
 
         val systemInstruction =
           """
-                You are an expert Indian Clinical & Sports Nutritionist giving real-time push notification advice to $userName.
+                You are an expert Clinical & Sports Nutritionist giving real-time push notification advice to $userName (usual cuisine: $cuisine).
                 Current Time: $currentTime on $todayIso.
                 User Target Goals: $targetCalories kcal daily target, ${targetProtein}g daily protein target.
                 
@@ -198,10 +194,10 @@ class AiNutritionRepositoryImpl(
                 Instructions:
                 Write a 1-2 sentence real-time push notification recommendation addressed directly to $userName.
                 - Analyze today's trajectory vs target and yesterday's log.
-                - If protein is low relative to the time of day, recommend specific food options (e.g. 1 protein shake, 3 eggs, chicken breast, paneer, sprouts, etc.).
-                - If today's calories are near or over target, suggest light alternatives (e.g. cucumber salad, clear soup, roasted makhana) or lighter dinner options.
+                - If protein is low relative to the time of day, recommend specific food options (common high-protein options in their cuisine and any supplements they remember).
+                - If today's calories are near or over target, suggest light alternatives (light options in their cuisine) or lighter dinner options.
                 - Output strictly a JSON object with key "advice". No extra conversational filler.
-                Example JSON: {"advice": "Hey $userName, you need 35g more protein today! Try having 1 scoop of protein shake or 4 eggs for dinner."}
+                Example JSON: {"advice": "Hey $userName, you need 35g more protein today! Try a high-protein option for dinner."}
             """
             .trimIndent()
 

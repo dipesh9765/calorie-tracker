@@ -11,12 +11,16 @@ import com.calorietracker.app.data.repository.DietitianChatRepository
 import com.calorietracker.app.data.repository.DietitianContext
 import com.calorietracker.app.data.repository.MemoryRepository
 import com.calorietracker.app.data.repository.PreferencesRepository
+import com.calorietracker.app.data.repository.WeightRepository
 import com.calorietracker.app.domain.model.AiProviderType
 import com.calorietracker.app.domain.model.ChatImage
 import com.calorietracker.app.domain.model.ChatRole
 import com.calorietracker.app.domain.model.ChatTurn
 import com.calorietracker.app.domain.model.Meal
 import com.calorietracker.app.domain.model.ReplyStatus
+import com.calorietracker.app.domain.usecase.GoalPlanner
+import com.calorietracker.app.domain.usecase.toPlanInput
+import com.calorietracker.app.domain.usecase.withPlan
 import com.calorietracker.app.util.ImageEncoder
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -60,6 +64,7 @@ class DietitianChatViewModel(app: Application) : AndroidViewModel(app) {
   private val db = AppDatabase.getInstance(app)
   private val mealDao = db.mealDao()
   private val memoryRepository = MemoryRepository(db.memoryDao())
+  private val weightRepository = WeightRepository(db.weightDao())
   private val prefs = PreferencesRepository(app)
   private val chatRepository = DietitianChatRepository()
 
@@ -72,6 +77,11 @@ class DietitianChatViewModel(app: Application) : AndroidViewModel(app) {
   private val _pendingImage = MutableStateFlow<ChatImage?>(null)
   val pendingImage: StateFlow<ChatImage?> = _pendingImage.asStateFlow()
 
+  /** Bumped when the chat changes the stored profile so the UI can reload it. */
+  private val _profileVersion = MutableStateFlow(0)
+  val profileVersion: StateFlow<Int> = _profileVersion.asStateFlow()
+
+  private val planner = GoalPlanner()
   private var nextId = 1L
 
   fun attachImage(uri: Uri) {
@@ -121,7 +131,8 @@ class DietitianChatViewModel(app: Application) : AndroidViewModel(app) {
       reply
         .onSuccess { r ->
           val notes =
-            runCatching { memoryRepository.apply(r.memoryUpdates) }.getOrDefault(emptyList())
+            runCatching { memoryRepository.apply(r.memoryUpdates) }.getOrDefault(emptyList()) +
+              listOfNotNull(r.weightKg?.let { recordWeight(it, profile) })
           _messages.update { list ->
             // A new estimate replaces any earlier unsaved one.
             val base =
@@ -152,6 +163,28 @@ class DietitianChatViewModel(app: Application) : AndroidViewModel(app) {
       _isLoading.value = false
     }
   }
+
+  /** Logs a weight reported in chat, refreshes the targets, and returns a note for the chat. */
+  private suspend fun recordWeight(weightKg: Float, profile: UserProfile): String? =
+    withContext(Dispatchers.IO) {
+      runCatching {
+          val added = weightRepository.logIfChanged(weightKg)
+          if (!added) return@runCatching null
+          var updated = profile.copy(weightKg = weightKg)
+          if (profile.profileConfigured) {
+            updated = updated.withPlan(planner.plan(updated.toPlanInput()))
+          }
+          prefs.saveUserProfile(updated)
+          _profileVersion.update { it + 1 }
+          if (profile.profileConfigured && updated.targetDailyCalories != profile.targetDailyCalories) {
+            "Logged ${"%.1f".format(weightKg)} kg. New targets: ${updated.targetDailyCalories} kcal, " +
+              "${updated.targetDailyProteinGrams.toInt()} g protein"
+          } else {
+            "Logged ${"%.1f".format(weightKg)} kg"
+          }
+        }
+        .getOrNull()
+    }
 
   fun saveMeal(messageId: Long) {
     val msg = _messages.value.find { it.id == messageId } ?: return
@@ -225,7 +258,9 @@ class DietitianChatViewModel(app: Application) : AndroidViewModel(app) {
         yesterdayIso = yesterday,
         dayOfWeek = SimpleDateFormat("EEEE", Locale.getDefault()).format(Date()),
         todaySummary = summarize(meals.filter { it.dateIso == today }, "Nothing logged yet."),
-        yesterdaySummary = summarize(meals.filter { it.dateIso == yesterday }, "Nothing logged.")
+        yesterdaySummary = summarize(meals.filter { it.dateIso == yesterday }, "Nothing logged."),
+        weekSummary = weekSummary(meals, fmt),
+        weightTrend = weightRepository.trendSummary()
       )
     }
 
@@ -238,6 +273,18 @@ class DietitianChatViewModel(app: Application) : AndroidViewModel(app) {
       }
     return "${meals.sumOf { it.calories }} kcal, ${"%.0f".format(protein)} g protein. $items"
   }
+
+  private fun weekSummary(meals: List<MealEntity>, fmt: SimpleDateFormat): String =
+    (6 downTo 0).joinToString("\n") { daysAgo ->
+      val day = fmt.format(Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -daysAgo) }.time)
+      val dayMeals = meals.filter { it.dateIso == day }
+      if (dayMeals.isEmpty()) {
+        "$day: nothing logged"
+      } else {
+        "$day: ${dayMeals.sumOf { it.calories }} kcal, " +
+          "${"%.0f".format(dayMeals.sumOf { it.proteinGrams.toDouble() })} g protein"
+      }
+    }
 
   private fun apiKeyFor(p: UserProfile, t: AiProviderType) =
     when (t) {

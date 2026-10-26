@@ -16,12 +16,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.calorietracker.app.data.local.WeightEntity
 import com.calorietracker.app.data.model.UserProfile
 import com.calorietracker.app.ui.theme.*
 
 @Composable
 fun ProfileScreen(
   userProfile: UserProfile,
+  weightHistory: List<WeightEntity>,
   onSaveProfile: (UserProfile) -> Unit,
   onExportJson: () -> Unit,
   onExportCsv: () -> Unit
@@ -37,10 +39,6 @@ fun ProfileScreen(
   var claudeModel by remember { mutableStateOf(userProfile.claudeModel) }
   var deepSeekModel by remember { mutableStateOf(userProfile.deepSeekModel) }
 
-  var currentWeight by remember { mutableStateOf(userProfile.weightKg.toString()) }
-  var targetWeight by remember { mutableStateOf(userProfile.targetWeightKg.toString()) }
-  var userHeight by remember { mutableStateOf(userProfile.heightCm.toString()) }
-
   LazyColumn(
     modifier = Modifier.fillMaxSize().background(BackgroundDark).padding(16.dp),
     verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -53,75 +51,18 @@ fun ProfileScreen(
         fontWeight = FontWeight.Bold
       )
       Text(
-        text = "TDEE / Deficit Calculator & AI Key Settings",
+        text = "Your details, daily targets and AI settings",
         color = TextSecondary,
         fontSize = 13.sp
       )
     }
 
-    // Nutrition Metrics Summary Card
     item {
-      Card(
-        colors = CardDefaults.cardColors(containerColor = SurfaceCard),
-        shape = RoundedCornerShape(16.dp),
-        modifier = Modifier.fillMaxWidth()
-      ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-          Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-              imageVector = Icons.Default.Person,
-              contentDescription = "Profile",
-              tint = PrimaryBlue
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-              "Personal Baseline (25 yrs, Male, 188cm)",
-              color = Color.White,
-              fontWeight = FontWeight.Bold,
-              fontSize = 15.sp
-            )
-          }
-
-          Spacer(modifier = Modifier.height(12.dp))
-
-          Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-          ) {
-            Column {
-              Text("BMR", color = TextSecondary, fontSize = 12.sp)
-              Text(
-                "${userProfile.bmrCalories} kcal",
-                color = Color.White,
-                fontWeight = FontWeight.Bold
-              )
-            }
-            Column {
-              Text("TDEE (Maintenance)", color = TextSecondary, fontSize = 12.sp)
-              Text(
-                "${userProfile.tdeeMaintenanceCalories} kcal",
-                color = Color.White,
-                fontWeight = FontWeight.Bold
-              )
-            }
-            Column {
-              Text("Target Deficit", color = TextSecondary, fontSize = 12.sp)
-              Text(
-                "${userProfile.targetDailyCalories} kcal",
-                color = AccentEmerald,
-                fontWeight = FontWeight.Bold
-              )
-            }
-          }
-
-          Spacer(modifier = Modifier.height(8.dp))
-          Text(
-            text = "Weight Loss Goal: 105 kg → 90 kg (600 kcal deficit + 180g protein)",
-            color = TextSecondary,
-            fontSize = 12.sp
-          )
-        }
-      }
+      ProfileDetailsCard(
+        profile = userProfile,
+        weightHistory = weightHistory,
+        onSave = onSaveProfile
+      )
     }
 
     // AI Provider Settings Card
@@ -262,10 +203,7 @@ fun ProfileScreen(
                   geminiModel = geminiModel,
                   openAiModel = openAiModel,
                   claudeModel = claudeModel,
-                  deepSeekModel = deepSeekModel,
-                  weightKg = currentWeight.toFloatOrNull() ?: 105f,
-                  targetWeightKg = targetWeight.toFloatOrNull() ?: 90f,
-                  heightCm = userHeight.toFloatOrNull() ?: 188f
+                  deepSeekModel = deepSeekModel
                 )
               onSaveProfile(updated)
             },

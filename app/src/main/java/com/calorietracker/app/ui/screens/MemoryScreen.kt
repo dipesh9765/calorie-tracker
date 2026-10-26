@@ -148,7 +148,7 @@ private fun MemoryEditDialog(
           value = content,
           onValueChange = { content = it },
           modifier = Modifier.fillMaxWidth(),
-          placeholder = { Text("e.g. Whey: Nakpro Perform, 1 scoop = 33 g, after workouts") },
+          placeholder = { Text("e.g. Protein powder: <brand>, 1 scoop = 33 g, after workouts") },
           minLines = 2,
           maxLines = 5,
           shape = RoundedCornerShape(12.dp)

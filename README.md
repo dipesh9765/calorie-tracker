@@ -24,8 +24,10 @@ An enterprise-grade Android application built with **Kotlin**, **Jetpack Compose
   - **DeepSeek** (`deepseek-chat`) with `json_object` mode.
 - 🧑‍⚕️ **AI Dietitian Chat**:
   - A conversation, not a one-shot parser: if a portion, oil/ghee, brand or hidden ingredient is unclear, the dietitian asks short follow-up questions and keeps refining until it can give a confident estimate, which you then save to your log.
-  - **Photo upload**: attach a photo of your plate for a calorie estimate (Gemini, OpenAI and Claude; DeepSeek is text-only).
+  - **Photos**: take a picture with the camera or pick one from the gallery for a calorie estimate (Gemini, OpenAI and Claude; DeepSeek is text-only).
+  - **Shortcuts**: one-tap "How am I doing today?", "What should I eat next?", "Review my week" and "I weighed in today". Tell it your weight in chat and it logs it and refreshes your targets.
   - **Memory**: it remembers your supplements (e.g. exact protein powder and scoop size), habits, allergies and preferences, and uses them in chat, quick-log and notifications. Say "I switched to a 40 g scoop" and it updates the memory. View, add, edit or delete memories from the 🧠 button in the chat header.
+- 🎯 **Your profile, your targets**: enter age, height, weight, goal (lose / maintain / gain), pace, activity level, cuisine and diet type. Daily calories, protein and water are generated (Mifflin-St Jeor with a safe-pace cap and calorie floor) and recalculated whenever you update your details, or set them by hand. Weight changes are kept as a history and fed to the dietitian as a trend.
 - 🕒 **Past-Day & Relative Date Logging**:
   - Automatically parses natural language expressions like *"yesterday night I ate 2 rotis with egg curry"* or *"on Sept 8 I had saoji chicken"*.
   - Automatically resolves relative date references to past ISO dates (`YYYY-MM-DD`).

@@ -1,5 +1,6 @@
 package com.calorietracker.app.domain.repository
 
+import com.calorietracker.app.data.model.UserProfile
 import com.calorietracker.app.domain.model.AiProviderType
 import com.calorietracker.app.domain.model.Meal
 
@@ -11,7 +12,8 @@ interface IAiNutritionRepository {
     modelName: String = "",
     todayContext: String = "",
     yesterdayContext: String = "",
-    memoryContext: String = ""
+    memoryContext: String = "",
+    profile: UserProfile = UserProfile()
   ): Result<Pair<Meal, String>>
 
   suspend fun generateNotificationAdvice(
@@ -23,6 +25,7 @@ interface IAiNutritionRepository {
     yesterdayContext: String = "",
     targetCalories: Int,
     targetProtein: Float,
-    memoryContext: String = ""
+    memoryContext: String = "",
+    cuisine: String = "Indian"
   ): Result<String>
 }
