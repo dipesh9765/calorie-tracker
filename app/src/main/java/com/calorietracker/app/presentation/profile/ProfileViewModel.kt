@@ -6,6 +6,7 @@ import com.calorietracker.app.data.exporter.DataExporter
 import com.calorietracker.app.data.local.WeightEntity
 import com.calorietracker.app.data.model.UserProfile
 import com.calorietracker.app.data.repository.WeightRepository
+import com.calorietracker.app.data.security.SecureStorageException
 import com.calorietracker.app.domain.repository.IMealRepository
 import com.calorietracker.app.domain.repository.IUserProfileRepository
 import com.calorietracker.app.presentation.UiEffect
@@ -46,9 +47,15 @@ constructor(
 
   fun save(updated: UserProfile) {
     viewModelScope.launch {
-      profileRepository.update(updated)
-      if (updated.profileConfigured) weights.logIfChanged(updated.weightKg)
-      effectChannel.send(UiEffect.Message("Profile saved"))
+      try {
+        profileRepository.update(updated)
+        if (updated.profileConfigured) weights.logIfChanged(updated.weightKg)
+        effectChannel.send(UiEffect.Message("Profile saved"))
+      } catch (e: SecureStorageException) {
+        effectChannel.send(
+          UiEffect.Message("Could not store your API keys securely: ${e.message}", long = true)
+        )
+      }
     }
   }
 

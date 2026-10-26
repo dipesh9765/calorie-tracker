@@ -1,6 +1,7 @@
 package com.calorietracker.app.di
 
 import android.content.Context
+import android.content.SharedPreferences
 import com.calorietracker.app.data.local.AppDatabase
 import com.calorietracker.app.data.local.DailyLogDao
 import com.calorietracker.app.data.local.MealDao
@@ -12,6 +13,10 @@ import com.calorietracker.app.data.remote.adapter.GeminiAdapter
 import com.calorietracker.app.data.remote.adapter.OpenAiAdapter
 import com.calorietracker.app.data.repository.AiNutritionRepositoryImpl
 import com.calorietracker.app.data.repository.DietitianChatRepository
+import com.calorietracker.app.data.repository.UserProfileRepository
+import com.calorietracker.app.data.security.AesGcmCipher
+import com.calorietracker.app.data.security.KeystoreKeyProvider
+import com.calorietracker.app.data.security.SecretCipher
 import com.calorietracker.app.domain.model.AiProviderType
 import com.calorietracker.app.domain.repository.IAiNutritionRepository
 import com.google.gson.Gson
@@ -22,6 +27,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import java.time.Clock
 import java.util.concurrent.TimeUnit
+import javax.inject.Named
 import javax.inject.Singleton
 import okhttp3.OkHttpClient
 
@@ -31,6 +37,17 @@ import okhttp3.OkHttpClient
 object AppModule {
 
   @Provides @Singleton fun provideGson(): Gson = Gson()
+
+  @Provides
+  @Singleton
+  @Named(UserProfileRepository.PROFILE_PREFS)
+  fun provideProfilePrefs(@ApplicationContext context: Context): SharedPreferences =
+    context.getSharedPreferences(UserProfileRepository.PREFS_NAME, Context.MODE_PRIVATE)
+
+  /** API keys are encrypted with an AES key that lives in the Android Keystore. */
+  @Provides
+  @Singleton
+  fun provideSecretCipher(): SecretCipher = AesGcmCipher(KeystoreKeyProvider::secretKey)
 
   @Provides
   @Singleton

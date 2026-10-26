@@ -66,4 +66,9 @@ data class UserProfile(
 
   val activeModel: String
     get() = modelFor(provider)
+
+  /** Never prints the API keys, so a stray log line or crash report cannot leak them. */
+  override fun toString(): String =
+    "UserProfile(name=$name, provider=$primaryAiProvider, configured=$profileConfigured, " +
+      "keys=${listOf(geminiApiKey, openAiApiKey, claudeApiKey, deepSeekApiKey).count { it.isNotBlank() }} set)"
 }
