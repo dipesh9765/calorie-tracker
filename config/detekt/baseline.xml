@@ -1,0 +1,10 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CyclomaticComplexMethod:DietitianPrompt.kt$DietitianReplyParser$fun parse(raw: String, todayIso: String): DietitianReply</ID>
+    <ID>LoopWithTooManyJumpStatements:MemoryRepository.kt$MemoryRepository$for</ID>
+    <ID>MagicNumber:DietitianPrompt.kt$DietitianReplyParser$300f</ID>
+    <ID>MagicNumber:DietitianPrompt.kt$DietitianReplyParser$30f</ID>
+  </CurrentIssues>
+</SmellBaseline>

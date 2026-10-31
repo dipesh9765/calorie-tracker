@@ -1,11 +1,8 @@
 package com.calorietracker.app
 
 import com.calorietracker.app.data.local.MealEntity
-import com.calorietracker.app.data.local.toMealEntity
-import com.calorietracker.app.data.local.toMealEntry
-import com.calorietracker.app.data.mapper.toDomain
-import com.calorietracker.app.data.mapper.toEntity
-import com.calorietracker.app.data.model.MealEntry
+import com.calorietracker.app.data.local.toDomain
+import com.calorietracker.app.data.local.toEntity
 import com.calorietracker.app.domain.model.Meal
 import org.junit.Assert.*
 import org.junit.Test
@@ -17,9 +14,9 @@ import org.junit.Test
 class DataMappingAndEntityTest {
 
   @Test
-  fun `MealEntry to MealEntity preserves all fields exactly`() {
+  fun `Meal to MealEntity preserves all fields exactly`() {
     val entry =
-      MealEntry(
+      Meal(
         id = "uuid-entry-123",
         foodName = "Saoji Chicken Curry & 3 Chapatis",
         portionDescription = "150g chicken curry + 3 whole wheat rotis",
@@ -32,7 +29,7 @@ class DataMappingAndEntityTest {
         timestamp = 1757664000000L
       )
 
-    val entity = entry.toMealEntity()
+    val entity = entry.toEntity()
 
     assertEquals(entry.id, entity.id)
     assertEquals(entry.foodName, entity.foodName)
@@ -47,7 +44,7 @@ class DataMappingAndEntityTest {
   }
 
   @Test
-  fun `MealEntity to MealEntry preserves all fields cleanly`() {
+  fun `MealEntity to Meal preserves all fields cleanly`() {
     val entity =
       MealEntity(
         id = "uuid-entity-456",
@@ -62,7 +59,7 @@ class DataMappingAndEntityTest {
         timestamp = 1757577600000L
       )
 
-    val entry = entity.toMealEntry()
+    val entry = entity.toDomain()
 
     assertEquals(entity.id, entry.id)
     assertEquals(entity.foodName, entry.foodName)
@@ -77,9 +74,9 @@ class DataMappingAndEntityTest {
   }
 
   @Test
-  fun `MealEntry to Meal domain and back to MealEntry maintains roundtrip fidelity`() {
+  fun `Meal to entity and back maintains roundtrip fidelity`() {
     val originalEntry =
-      MealEntry(
+      Meal(
         id = "roundtrip-789",
         foodName = "4 Boiled Egg Whites & 2 Whole Eggs",
         portionDescription = "6 eggs total",
@@ -92,21 +89,20 @@ class DataMappingAndEntityTest {
         timestamp = 1757665000000L
       )
 
-    val domainMeal: Meal = originalEntry.toDomain()
+    val domainMeal: Meal = originalEntry.toEntity().toDomain()
     assertEquals(originalEntry.id, domainMeal.id)
     assertEquals(originalEntry.foodName, domainMeal.foodName)
     assertEquals(originalEntry.calories, domainMeal.calories)
     assertEquals(originalEntry.proteinGrams, domainMeal.proteinGrams, 0.001f)
     assertEquals(originalEntry.dateIso, domainMeal.dateIso)
 
-    val convertedEntry: MealEntry = domainMeal.toEntity()
-    assertEquals(originalEntry, convertedEntry)
+    assertEquals(originalEntry, domainMeal)
   }
 
   @Test
   fun `mappers preserve Unicode Devanagari Hindi and special characters`() {
     val unicodeEntry =
-      MealEntry(
+      Meal(
         id = "unicode-id",
         foodName = "तर्री पोहा और सांबर वड़ा 🍛 (Tarri Poha & Sambar Vada)",
         portionDescription = "1 प्लेट पोहा, 2 वड़े, तीखा रस्सा",
@@ -118,12 +114,12 @@ class DataMappingAndEntityTest {
         dateIso = "2026-09-12"
       )
 
-    val entity = unicodeEntry.toMealEntity()
+    val entity = unicodeEntry.toEntity()
     assertEquals(unicodeEntry.foodName, entity.foodName)
     assertEquals(unicodeEntry.portionDescription, entity.portionDescription)
     assertEquals(unicodeEntry.mealCategory, entity.mealCategory)
 
-    val roundtripEntry = entity.toMealEntry()
+    val roundtripEntry = entity.toDomain()
     assertEquals(unicodeEntry.foodName, roundtripEntry.foodName)
     assertEquals(unicodeEntry.portionDescription, roundtripEntry.portionDescription)
   }

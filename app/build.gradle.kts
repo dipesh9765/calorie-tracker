@@ -3,16 +3,18 @@ plugins {
   alias(libs.plugins.kotlin.android)
   alias(libs.plugins.kotlin.compose)
   alias(libs.plugins.ksp)
+  alias(libs.plugins.hilt)
+  alias(libs.plugins.kover)
 }
 
 android {
   namespace = "com.calorietracker.app"
-  compileSdk = 34
+  compileSdk = 36
 
   defaultConfig {
     applicationId = "com.calorietracker.app"
     minSdk = 26
-    targetSdk = 34
+    targetSdk = 35
     versionCode = 1
     versionName = "1.0"
 
@@ -54,7 +56,8 @@ android {
       }
     }
     release {
-      isMinifyEnabled = false
+      isMinifyEnabled = true
+      isShrinkResources = true
       if (canSign) {
         signingConfig = signingConfigs.getByName("release")
       }
@@ -66,9 +69,20 @@ android {
     targetCompatibility = JavaVersion.VERSION_17
   }
   kotlinOptions { jvmTarget = "17" }
+  testOptions {
+    unitTests.isReturnDefaultValues = true
+    unitTests.isIncludeAndroidResources = true
+  }
   buildFeatures { compose = true }
+  lint {
+    abortOnError = true
+    checkDependencies = false
+    lintConfig = file("lint.xml")
+  }
   packaging { resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" } }
 }
+
+ksp { arg("room.schemaLocation", "$projectDir/schemas") }
 
 dependencies {
   implementation(libs.androidx.core.ktx)
@@ -80,6 +94,15 @@ dependencies {
   implementation(libs.androidx.ui.tooling.preview)
   implementation(libs.androidx.material3)
   implementation(libs.androidx.material.icons.extended)
+
+  // Dependency injection
+  implementation(libs.hilt.android)
+  ksp(libs.hilt.compiler)
+  implementation(libs.androidx.hilt.navigation.compose)
+  implementation(libs.androidx.hilt.work)
+  ksp(libs.androidx.hilt.compiler)
+  implementation(libs.androidx.lifecycle.viewmodel.compose)
+  implementation(libs.androidx.lifecycle.runtime.compose)
 
   // Room
   implementation(libs.androidx.room.runtime)
@@ -97,6 +120,34 @@ dependencies {
 
   // Testing
   testImplementation(libs.junit)
+  testImplementation(libs.okhttp.mockwebserver)
+  testImplementation(libs.kotlinx.coroutines.test)
+  testImplementation(libs.turbine)
+  testImplementation(libs.robolectric)
+  testImplementation(platform(libs.androidx.compose.bom))
+  testImplementation(libs.androidx.ui.test.junit4)
+  testImplementation(libs.androidx.test.core)
 
   debugImplementation(libs.androidx.ui.tooling)
+  debugImplementation(libs.androidx.ui.test.manifest)
+}
+
+kover {
+  reports {
+    filters {
+      excludes {
+        // Compose UI, generated Room/KSP code and DI wiring are exercised by instrumented/UI tests,
+        // not JVM unit tests.
+        packages("com.calorietracker.app.ui.*")
+        classes(
+          "*_Impl",
+          "*_Impl\$*",
+          "*ComposableSingletons*",
+          "*.BuildConfig",
+          "hilt_aggregated_deps.*"
+        )
+      }
+    }
+    verify { rule("Minimum line coverage") { minBound(60) } }
+  }
 }

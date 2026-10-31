@@ -8,6 +8,9 @@ import com.calorietracker.app.data.remote.adapter.OpenAiAdapter
 import com.calorietracker.app.domain.model.AiProviderType
 import com.calorietracker.app.domain.model.ChatTurn
 import com.calorietracker.app.domain.model.DietitianReply
+import java.io.IOException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -33,11 +36,18 @@ class DietitianChatRepository(
         val raw =
           adapters.getValue(provider).chat(turns, apiKey, DietitianPrompt.build(context), modelName)
         Result.success(DietitianReplyParser.parse(raw, context.todayIso))
-      } catch (e: java.net.SocketTimeoutException) {
-        Result.failure(Exception("The request to ${provider.displayName} timed out. Please retry."))
-      } catch (e: java.net.UnknownHostException) {
-        Result.failure(Exception("No internet connection. Please check your network and retry."))
-      } catch (e: Exception) {
+      } catch (e: SocketTimeoutException) {
+        Result.failure(
+          IOException("The request to ${provider.displayName} timed out. Please retry.", e)
+        )
+      } catch (e: UnknownHostException) {
+        Result.failure(
+          IOException("No internet connection. Please check your network and retry.", e)
+        )
+      } catch (e: IOException) {
+        Result.failure(e)
+      } catch (e: RuntimeException) {
+        // Adapters report API errors and unparseable replies as runtime exceptions.
         Result.failure(e)
       }
     }

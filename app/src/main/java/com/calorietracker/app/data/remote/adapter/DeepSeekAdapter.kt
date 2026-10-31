@@ -7,10 +7,7 @@ import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
 
 /** Concrete adapter implementation for DeepSeek API (`deepseek-chat`). */
 class DeepSeekAdapter(
@@ -20,7 +17,8 @@ class DeepSeekAdapter(
       .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
       .writeTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
       .build(),
-  private val gson: Gson = Gson()
+  private val gson: Gson = Gson(),
+  private val baseUrl: String = "https://api.deepseek.com"
 ) : IAiProviderAdapter {
 
   override suspend fun parseMeal(
@@ -30,19 +28,11 @@ class DeepSeekAdapter(
     modelName: String
   ): String =
     withContext(Dispatchers.IO) {
-      val cleanKey = apiKey.trim()
-      if (cleanKey.isBlank()) {
-        throw IllegalArgumentException(
-          "DeepSeek API Key is blank. Please enter your API key in Profile settings."
-        )
-      }
-
-      val selectedModel = modelName.trim().ifBlank { "deepseek-chat" }
-      val url = "https://api.deepseek.com/v1/chat/completions"
+      val key = requireKey(apiKey, PROVIDER)
       val payload =
         JsonObject().apply {
-          addProperty("model", selectedModel)
-          add("response_format", JsonObject().apply { addProperty("type", "json_object") })
+          addProperty("model", modelName.trim().ifBlank { DEFAULT_MODEL })
+          add("response_format", RESPONSE_FORMAT)
           add(
             "messages",
             gson.toJsonTree(
@@ -53,49 +43,15 @@ class DeepSeekAdapter(
             )
           )
         }
-
-      val request =
-        Request.Builder()
-          .url(url)
-          .header("Authorization", "Bearer $cleanKey")
-          .post(payload.toString().toRequestBody("application/json".toMediaType()))
-          .build()
-
-      client.newCall(request).execute().use { response ->
-        val responseBody = response.body?.string() ?: ""
-
-        if (!response.isSuccessful) {
-          val errorDetails =
-            try {
-              val errObj = gson.fromJson(responseBody, JsonObject::class.java)
-              val errObjDetail = errObj.getAsJsonObject("error")
-              errObjDetail?.get("message")?.asString ?: responseBody
-            } catch (_: Exception) {
-              responseBody.ifBlank { "HTTP ${response.code} ${response.message}" }
-            }
-          throw Exception("DeepSeek API Error (${response.code}): $errorDetails")
-        }
-
-        if (responseBody.isBlank()) {
-          throw Exception("Empty response received from DeepSeek API.")
-        }
-
-        val resObj = gson.fromJson(responseBody, JsonObject::class.java)
-        val choices =
-          resObj.getAsJsonArray("choices")
-            ?: throw Exception("Invalid DeepSeek response structure: missing 'choices' array.")
-
-        if (choices.size() == 0) {
-          throw Exception("DeepSeek returned zero choices.")
-        }
-
-        return@withContext choices
-          .get(0)
-          .asJsonObject
-          .getAsJsonObject("message")
-          .get("content")
-          .asString
-      }
+      client
+        .postJson(
+          "$baseUrl/v1/chat/completions",
+          mapOf("Authorization" to "Bearer $key"),
+          payload,
+          PROVIDER,
+          gson
+        )
+        .firstChoiceContent(PROVIDER)
     }
 
   override suspend fun chat(
@@ -106,10 +62,8 @@ class DeepSeekAdapter(
   ): String =
     withContext(Dispatchers.IO) {
       val key = requireKey(apiKey, "DeepSeek")
-      if (turns.any { it.image != null }) {
-        throw IllegalArgumentException(
-          "DeepSeek can't read images. Switch to Gemini, OpenAI or Claude in Profile to send photos."
-        )
+      require(turns.none { it.image != null }) {
+        "DeepSeek can't read images. Switch to Gemini, OpenAI or Claude in Profile to send photos."
       }
       val messages = JsonArray()
       messages.add(
@@ -134,7 +88,7 @@ class DeepSeekAdapter(
         }
       val res =
         client.postJson(
-          "https://api.deepseek.com/v1/chat/completions",
+          "$baseUrl/v1/chat/completions",
           mapOf("Authorization" to "Bearer $key"),
           payload,
           "DeepSeek",
@@ -146,6 +100,12 @@ class DeepSeekAdapter(
         ?.asJsonObject
         ?.getAsJsonObject("message")
         ?.get("content")
-        ?.asString ?: throw Exception("DeepSeek returned no content.")
+        ?.asString ?: throw ProviderResponseException("DeepSeek returned no content.")
     }
+
+  private companion object {
+    const val PROVIDER = "DeepSeek"
+    const val DEFAULT_MODEL = "deepseek-chat"
+    val RESPONSE_FORMAT = JsonObject().apply { addProperty("type", "json_object") }
+  }
 }

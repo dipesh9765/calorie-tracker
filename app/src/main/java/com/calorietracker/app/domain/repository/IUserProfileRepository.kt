@@ -1,12 +1,12 @@
 package com.calorietracker.app.domain.repository
 
 import com.calorietracker.app.data.model.UserProfile
-import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.StateFlow
 
+/** Source of truth for the user's profile, targets and AI provider settings. */
 interface IUserProfileRepository {
-  fun getUserProfile(): Flow<UserProfile>
+  /** Always holds the latest saved profile; collectors see changes made anywhere in the app. */
+  val profile: StateFlow<UserProfile>
 
-  suspend fun updateUserProfile(profile: UserProfile)
-
-  suspend fun getApiKeyForProvider(providerName: String): String
+  suspend fun update(profile: UserProfile)
 }

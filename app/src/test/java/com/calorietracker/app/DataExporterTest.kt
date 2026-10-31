@@ -1,6 +1,6 @@
 package com.calorietracker.app
 
-import com.calorietracker.app.data.model.MealEntry
+import com.calorietracker.app.domain.model.Meal
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.google.gson.reflect.TypeToken
@@ -16,7 +16,7 @@ class DataExporterTest {
 
   private val gson: Gson = GsonBuilder().setPrettyPrinting().create()
 
-  private fun formatCsvString(meals: List<MealEntry>): String {
+  private fun formatCsvString(meals: List<Meal>): String {
     val writer = StringWriter()
     writer.append(
       "ID,Date,MealCategory,FoodName,PortionDescription,Calories,ProteinGrams,CarbsGrams,FatGrams\n"
@@ -40,7 +40,7 @@ class DataExporterTest {
   fun `JSON export produces valid schema and maintains roundtrip equality`() {
     val meals =
       listOf(
-        MealEntry(
+        Meal(
           id = "export-1",
           foodName = "3 Rotis & Chicken Curry",
           portionDescription = "3 rotis + 150g chicken",
@@ -52,7 +52,7 @@ class DataExporterTest {
           dateIso = "2026-09-12",
           timestamp = 1757664000000L
         ),
-        MealEntry(
+        Meal(
           id = "export-2",
           foodName = "1 Scoop Nakpro Whey",
           portionDescription = "33g scoop",
@@ -71,8 +71,8 @@ class DataExporterTest {
     assertTrue(jsonString.startsWith("["))
     assertTrue(jsonString.endsWith("]"))
 
-    val listType = object : TypeToken<List<MealEntry>>() {}.type
-    val deserialized: List<MealEntry> = gson.fromJson(jsonString, listType)
+    val listType = object : TypeToken<List<Meal>>() {}.type
+    val deserialized: List<Meal> = gson.fromJson(jsonString, listType)
 
     assertEquals(2, deserialized.size)
     assertEquals(meals[0].id, deserialized[0].id)
@@ -96,7 +96,7 @@ class DataExporterTest {
   @Test
   fun `CSV export escapes embedded double quotes and commas according to RFC 4180`() {
     val mealWithSpecialChars =
-      MealEntry(
+      Meal(
         id = "csv-special-1",
         foodName = "Chicken \"Saoji\" Special, Spicy",
         portionDescription = "1 \"Full\" Plate, 250g",
@@ -122,7 +122,7 @@ class DataExporterTest {
   @Test
   fun `CSV export handles zero values cleanly`() {
     val zeroMeal =
-      MealEntry(
+      Meal(
         id = "zero-1",
         foodName = "Diet Soda",
         portionDescription = "330ml can",

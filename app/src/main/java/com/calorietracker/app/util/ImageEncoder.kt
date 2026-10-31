@@ -48,7 +48,11 @@ object ImageEncoder {
       var sample = 1
       while (max(bounds.outWidth, bounds.outHeight) / (sample * 2) >= MAX_SIDE) sample *= 2
       resolver.openInputStream(uri)?.use {
-        BitmapFactory.decodeStream(it, null, BitmapFactory.Options().apply { inSampleSize = sample })
+        BitmapFactory.decodeStream(
+          it,
+          null,
+          BitmapFactory.Options().apply { inSampleSize = sample }
+        )
       }
     }
 }

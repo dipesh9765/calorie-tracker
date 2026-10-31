@@ -1,11 +1,11 @@
 package com.calorietracker.app.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -38,7 +38,10 @@ fun MemoryScreen(
 
   Column(modifier = Modifier.fillMaxSize()) {
     Row(
-      modifier = Modifier.fillMaxWidth().background(SurfaceDark).padding(horizontal = 8.dp, vertical = 10.dp),
+      modifier =
+        Modifier.fillMaxWidth()
+          .background(SurfaceDark)
+          .padding(horizontal = 8.dp, vertical = 10.dp),
       verticalAlignment = Alignment.CenterVertically
     ) {
       IconButton(onClick = onBack) {
@@ -67,9 +70,17 @@ fun MemoryScreen(
       ) {
         items(memories, key = { it.id }) { memory ->
           Card(colors = CardDefaults.cardColors(containerColor = SurfaceCard)) {
-            Row(modifier = Modifier.padding(start = 14.dp, top = 8.dp, bottom = 8.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(
+              modifier = Modifier.padding(start = 14.dp, top = 8.dp, bottom = 8.dp, end = 4.dp),
+              verticalAlignment = Alignment.CenterVertically
+            ) {
               Column(modifier = Modifier.weight(1f)) {
-                Text(memory.category.uppercase(), color = AccentPurple, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Text(
+                  memory.category.uppercase(),
+                  color = AccentPurple,
+                  fontSize = 11.sp,
+                  fontWeight = FontWeight.Bold
+                )
                 Text(memory.content, color = TextPrimary, fontSize = 15.sp)
               }
               IconButton(onClick = { editing = memory }) {
@@ -139,7 +150,10 @@ private fun MemoryEditDialog(
     title = { Text(if (initial == null) "Add memory" else "Edit memory") },
     text = {
       Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(modifier = Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(
+          modifier = Modifier.horizontalScroll(rememberScrollState()),
+          horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
           MemoryCategory.all.forEach { c ->
             FilterChip(selected = category == c, onClick = { category = c }, label = { Text(c) })
           }
@@ -156,7 +170,9 @@ private fun MemoryEditDialog(
       }
     },
     confirmButton = {
-      TextButton(onClick = { onSave(category, content) }, enabled = content.isNotBlank()) { Text("Save") }
+      TextButton(onClick = { onSave(category, content) }, enabled = content.isNotBlank()) {
+        Text("Save")
+      }
     },
     dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
   )

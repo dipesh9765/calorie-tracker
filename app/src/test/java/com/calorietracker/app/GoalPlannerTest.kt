@@ -1,9 +1,9 @@
 package com.calorietracker.app
 
+import com.calorietracker.app.data.local.WeightEntity
 import com.calorietracker.app.data.model.UserProfile
 import com.calorietracker.app.data.repository.DietitianReplyParser
 import com.calorietracker.app.data.repository.WeightRepository
-import com.calorietracker.app.data.local.WeightEntity
 import com.calorietracker.app.domain.usecase.ActivityLevel
 import com.calorietracker.app.domain.usecase.GoalPlanner
 import com.calorietracker.app.domain.usecase.GoalType
@@ -69,7 +69,15 @@ class GoalPlannerTest {
   fun `calorie floor protects small users`() {
     val plan =
       planner.plan(
-        input(weight = 50f, height = 155f, age = 50, gender = "Female", activity = ActivityLevel.SEDENTARY, target = 45f, rate = 0.5f)
+        input(
+          weight = 50f,
+          height = 155f,
+          age = 50,
+          gender = "Female",
+          activity = ActivityLevel.SEDENTARY,
+          target = 45f,
+          rate = 0.5f
+        )
       )
     assertEquals(1200, plan.targetCalories)
     assertTrue(plan.warnings.any { it.contains("1200") })
@@ -85,7 +93,8 @@ class GoalPlannerTest {
 
   @Test
   fun `withPlan copies generated targets into the profile`() {
-    val profile = UserProfile(name = "A", weightKg = 80f, heightCm = 175f, age = 30, targetWeightKg = 72f)
+    val profile =
+      UserProfile(name = "A", weightKg = 80f, heightCm = 175f, age = 30, targetWeightKg = 72f)
     val updated = profile.withPlan(planner.plan(profile.toPlanInput()))
     assertTrue(updated.targetDailyCalories != profile.targetDailyCalories)
     assertEquals("A", updated.name)
@@ -113,9 +122,14 @@ class GoalPlannerTest {
 
   @Test
   fun `reply parser reads reported weight and ignores implausible values`() {
-    val ok = DietitianReplyParser.parse("""{"status":"CHAT","message":"Nice","weightKg":82.4}""", "2026-10-26")
+    val ok =
+      DietitianReplyParser.parse(
+        """{"status":"CHAT","message":"Nice","weightKg":82.4}""",
+        "2026-10-26"
+      )
     assertEquals(82.4f, ok.weightKg!!, 0.001f)
-    val bad = DietitianReplyParser.parse("""{"status":"CHAT","message":"?","weightKg":5}""", "2026-10-26")
+    val bad =
+      DietitianReplyParser.parse("""{"status":"CHAT","message":"?","weightKg":5}""", "2026-10-26")
     assertNull(bad.weightKg)
     assertNotNull(ok)
   }

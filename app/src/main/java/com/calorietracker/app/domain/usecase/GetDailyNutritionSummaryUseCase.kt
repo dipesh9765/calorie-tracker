@@ -1,32 +1,41 @@
 package com.calorietracker.app.domain.usecase
 
+import com.calorietracker.app.domain.model.DailyLog
 import com.calorietracker.app.domain.model.DailyNutritionSummary
+import com.calorietracker.app.domain.model.totals
+import com.calorietracker.app.domain.repository.IDailyLogRepository
 import com.calorietracker.app.domain.repository.IMealRepository
+import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 
-class GetDailyNutritionSummaryUseCase(private val mealRepository: IMealRepository) {
-  fun execute(
-    targetCalories: Int = 2300,
-    targetProtein: Float = 180f
-  ): Flow<List<DailyNutritionSummary>> {
-    return mealRepository.getAllMeals().map { meals ->
+/** Per-day totals against the user's targets, newest data last, for charts and history. */
+class GetDailyNutritionSummaryUseCase
+@Inject
+constructor(
+  private val mealRepository: IMealRepository,
+  private val dailyLogRepository: IDailyLogRepository
+) {
+  fun execute(targetCalories: Int, targetProtein: Float): Flow<List<DailyNutritionSummary>> =
+    combine(mealRepository.getAllMeals(), dailyLogRepository.observeAll()) { meals, logs ->
       meals
         .groupBy { it.dateIso }
         .map { (date, dayMeals) ->
+          val totals = dayMeals.totals()
+          val log = logs[date] ?: DailyLog(date)
           DailyNutritionSummary(
             dateIso = date,
-            totalCalories = dayMeals.sumOf { it.calories },
+            totalCalories = totals.calories,
             targetCalories = targetCalories,
-            totalProtein = dayMeals.sumOf { it.proteinGrams.toDouble() }.toFloat(),
+            totalProtein = totals.protein,
             targetProtein = targetProtein,
-            totalCarbs = dayMeals.sumOf { it.carbsGrams.toDouble() }.toFloat(),
-            totalFat = dayMeals.sumOf { it.fatGrams.toDouble() }.toFloat(),
-            creatineTaken = true,
-            mealsCount = dayMeals.size
+            totalCarbs = totals.carbs,
+            totalFat = totals.fat,
+            creatineTaken = log.creatineTaken,
+            mealsCount = dayMeals.size,
+            waterLiters = log.waterLiters
           )
         }
         .sortedBy { it.dateIso }
     }
-  }
 }

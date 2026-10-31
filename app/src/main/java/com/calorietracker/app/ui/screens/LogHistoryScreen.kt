@@ -16,8 +16,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.calorietracker.app.data.model.DailySummary
-import com.calorietracker.app.data.model.MealEntry
+import com.calorietracker.app.domain.model.DailyNutritionSummary
+import com.calorietracker.app.domain.model.Meal
 import com.calorietracker.app.ui.components.DayDetailsDialog
 import com.calorietracker.app.ui.components.DeleteConfirmationDialog
 import com.calorietracker.app.ui.theme.BackgroundDark
@@ -27,13 +27,12 @@ import com.calorietracker.app.ui.theme.TextSecondary
 
 @Composable
 fun LogHistoryScreen(
-  allMeals: List<MealEntry>,
-  targetCalories: Int,
-  targetProtein: Float,
+  allMeals: List<Meal>,
+  summaries: List<DailyNutritionSummary>,
   onDeleteMeal: (String) -> Unit
 ) {
-  var selectedSummaryForDialog by remember { mutableStateOf<DailySummary?>(null) }
-  var mealPendingDelete by remember { mutableStateOf<MealEntry?>(null) }
+  var selectedSummaryForDialog by remember { mutableStateOf<DailyNutritionSummary?>(null) }
+  var mealPendingDelete by remember { mutableStateOf<Meal?>(null) }
 
   // Deletion confirmation dialog
   mealPendingDelete?.let { meal ->
@@ -106,19 +105,7 @@ fun LogHistoryScreen(
                   fontWeight = FontWeight.Bold,
                   modifier =
                     Modifier.clickable {
-                      val dayMeals = allMeals.filter { it.dateIso == meal.dateIso }
-                      selectedSummaryForDialog =
-                        DailySummary(
-                          dateIso = meal.dateIso,
-                          totalCalories = dayMeals.sumOf { it.calories },
-                          targetCalories = targetCalories,
-                          totalProtein = dayMeals.sumOf { it.proteinGrams.toDouble() }.toFloat(),
-                          targetProtein = targetProtein,
-                          totalCarbs = dayMeals.sumOf { it.carbsGrams.toDouble() }.toFloat(),
-                          totalFat = dayMeals.sumOf { it.fatGrams.toDouble() }.toFloat(),
-                          creatineTaken = true,
-                          mealsCount = dayMeals.size
-                        )
+                      selectedSummaryForDialog = summaries.find { it.dateIso == meal.dateIso }
                     }
                 )
                 Spacer(modifier = Modifier.width(8.dp))

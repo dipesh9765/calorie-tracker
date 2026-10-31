@@ -2,7 +2,7 @@ package com.calorietracker.app.data.local
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import com.calorietracker.app.data.model.MealEntry
+import com.calorietracker.app.domain.model.Meal
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -22,8 +22,8 @@ data class MealEntity(
   val timestamp: Long = System.currentTimeMillis()
 )
 
-fun MealEntity.toMealEntry(): MealEntry {
-  return MealEntry(
+fun MealEntity.toDomain(): Meal {
+  return Meal(
     id = id,
     foodName = foodName,
     portionDescription = portionDescription,
@@ -37,7 +37,7 @@ fun MealEntity.toMealEntry(): MealEntry {
   )
 }
 
-fun MealEntry.toMealEntity(): MealEntity {
+fun Meal.toEntity(): MealEntity {
   return MealEntity(
     id = id,
     foodName = foodName,

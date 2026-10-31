@@ -1,31 +1,34 @@
 package com.calorietracker.app.presentation
 
-import android.app.Application
+import android.content.Context
 import android.net.Uri
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.calorietracker.app.data.local.AppDatabase
-import com.calorietracker.app.data.local.MealEntity
 import com.calorietracker.app.data.model.UserProfile
 import com.calorietracker.app.data.repository.DietitianChatRepository
 import com.calorietracker.app.data.repository.DietitianContext
 import com.calorietracker.app.data.repository.MemoryRepository
-import com.calorietracker.app.data.repository.PreferencesRepository
 import com.calorietracker.app.data.repository.WeightRepository
-import com.calorietracker.app.domain.model.AiProviderType
 import com.calorietracker.app.domain.model.ChatImage
 import com.calorietracker.app.domain.model.ChatRole
 import com.calorietracker.app.domain.model.ChatTurn
 import com.calorietracker.app.domain.model.Meal
 import com.calorietracker.app.domain.model.ReplyStatus
+import com.calorietracker.app.domain.repository.IMealRepository
+import com.calorietracker.app.domain.repository.IUserProfileRepository
 import com.calorietracker.app.domain.usecase.GoalPlanner
 import com.calorietracker.app.domain.usecase.toPlanInput
 import com.calorietracker.app.domain.usecase.withPlan
+import com.calorietracker.app.domain.util.daysAgoIso
+import com.calorietracker.app.domain.util.todayIso
 import com.calorietracker.app.util.ImageEncoder
-import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Date
+import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import java.time.Clock
+import java.time.LocalDate
+import java.time.format.TextStyle
 import java.util.Locale
+import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -59,14 +62,18 @@ data class ChatMessageUi(
  * Holds one dietitian conversation: user turns (text + optional photo), the dietitian's clarifying
  * questions, and finally a meal estimate the user can save. Kept in memory; "New chat" resets it.
  */
-class DietitianChatViewModel(app: Application) : AndroidViewModel(app) {
-
-  private val db = AppDatabase.getInstance(app)
-  private val mealDao = db.mealDao()
-  private val memoryRepository = MemoryRepository(db.memoryDao())
-  private val weightRepository = WeightRepository(db.weightDao())
-  private val prefs = PreferencesRepository(app)
-  private val chatRepository = DietitianChatRepository()
+@HiltViewModel
+class DietitianChatViewModel
+@Inject
+constructor(
+  @ApplicationContext private val appContext: Context,
+  private val mealRepository: IMealRepository,
+  private val memoryRepository: MemoryRepository,
+  private val weightRepository: WeightRepository,
+  private val profileRepository: IUserProfileRepository,
+  private val chatRepository: DietitianChatRepository,
+  private val clock: Clock
+) : ViewModel() {
 
   private val _messages = MutableStateFlow<List<ChatMessageUi>>(emptyList())
   val messages: StateFlow<List<ChatMessageUi>> = _messages.asStateFlow()
@@ -77,16 +84,12 @@ class DietitianChatViewModel(app: Application) : AndroidViewModel(app) {
   private val _pendingImage = MutableStateFlow<ChatImage?>(null)
   val pendingImage: StateFlow<ChatImage?> = _pendingImage.asStateFlow()
 
-  /** Bumped when the chat changes the stored profile so the UI can reload it. */
-  private val _profileVersion = MutableStateFlow(0)
-  val profileVersion: StateFlow<Int> = _profileVersion.asStateFlow()
-
   private val planner = GoalPlanner()
   private var nextId = 1L
 
   fun attachImage(uri: Uri) {
     viewModelScope.launch {
-      val resolver = getApplication<Application>().contentResolver
+      val resolver = appContext.contentResolver
       val encoded = withContext(Dispatchers.Default) { ImageEncoder.encode(resolver, uri) }
       if (encoded != null) {
         _pendingImage.value = encoded
@@ -117,14 +120,14 @@ class DietitianChatViewModel(app: Application) : AndroidViewModel(app) {
     _isLoading.value = true
 
     viewModelScope.launch {
-      val profile = prefs.getUserProfile()
-      val provider = AiProviderType.fromString(profile.primaryAiProvider)
+      val profile = profileRepository.profile.value
+      val provider = profile.provider
       val reply =
         chatRepository.reply(
           turns = historyForProvider(),
           provider = provider,
-          apiKey = apiKeyFor(profile, provider),
-          modelName = modelFor(profile, provider),
+          apiKey = profile.apiKeyFor(provider),
+          modelName = profile.modelFor(provider),
           context = buildContext(profile)
         )
 
@@ -174,9 +177,10 @@ class DietitianChatViewModel(app: Application) : AndroidViewModel(app) {
           if (profile.profileConfigured) {
             updated = updated.withPlan(planner.plan(updated.toPlanInput()))
           }
-          prefs.saveUserProfile(updated)
-          _profileVersion.update { it + 1 }
-          if (profile.profileConfigured && updated.targetDailyCalories != profile.targetDailyCalories) {
+          profileRepository.update(updated)
+          if (
+            profile.profileConfigured && updated.targetDailyCalories != profile.targetDailyCalories
+          ) {
             "Logged ${"%.1f".format(weightKg)} kg. New targets: ${updated.targetDailyCalories} kcal, " +
               "${updated.targetDailyProteinGrams.toInt()} g protein"
           } else {
@@ -195,20 +199,7 @@ class DietitianChatViewModel(app: Application) : AndroidViewModel(app) {
       list.map { if (it.id == messageId) it.copy(mealState = MealCardState.SAVED) else it }
     }
     viewModelScope.launch {
-      withContext(Dispatchers.IO) {
-        mealDao.insertMeal(
-          MealEntity(
-            foodName = meal.foodName,
-            portionDescription = meal.portionDescription,
-            calories = meal.calories,
-            proteinGrams = meal.proteinGrams,
-            carbsGrams = meal.carbsGrams,
-            fatGrams = meal.fatGrams,
-            mealCategory = meal.mealCategory,
-            dateIso = meal.dateIso
-          )
-        )
-      }
+      withContext(Dispatchers.IO) { mealRepository.insertMeal(meal.copy(action = "CREATE")) }
     }
   }
 
@@ -220,9 +211,10 @@ class DietitianChatViewModel(app: Application) : AndroidViewModel(app) {
   private fun historyForProvider(): List<ChatTurn> {
     // Providers require the conversation to open with a user turn.
     val turns =
-      _messages.value.filterNot { it.isError }.takeLast(MAX_HISTORY).dropWhile {
-        it.role != ChatRole.USER
-      }
+      _messages.value
+        .filterNot { it.isError }
+        .takeLast(MAX_HISTORY)
+        .dropWhile { it.role != ChatRole.USER }
     val imageIdsToKeep =
       turns.filter { it.image != null }.takeLast(MAX_IMAGES_IN_HISTORY).map { it.id }.toSet()
     return turns.map {
@@ -230,7 +222,9 @@ class DietitianChatViewModel(app: Application) : AndroidViewModel(app) {
     }
   }
 
-  /** Plain-text replay of an assistant turn, including the estimate so later turns can refine it. */
+  /**
+   * Plain-text replay of an assistant turn, including the estimate so later turns can refine it.
+   */
   private fun historyTextFor(message: String, questions: List<String>, meal: Meal?): String {
     val parts = mutableListOf(message)
     if (questions.isNotEmpty()) {
@@ -246,25 +240,24 @@ class DietitianChatViewModel(app: Application) : AndroidViewModel(app) {
 
   private suspend fun buildContext(profile: UserProfile): DietitianContext =
     withContext(Dispatchers.IO) {
-      val fmt = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-      val today = fmt.format(Date())
-      val yesterday =
-        fmt.format(Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }.time)
-      val meals = mealDao.getAllMeals().first()
+      val today = clock.todayIso()
+      val yesterday = clock.daysAgoIso(1)
+      val meals = mealRepository.getAllMeals().first()
       DietitianContext(
         profile = profile,
         memories = memoryRepository.getAll(),
         todayIso = today,
         yesterdayIso = yesterday,
-        dayOfWeek = SimpleDateFormat("EEEE", Locale.getDefault()).format(Date()),
+        dayOfWeek =
+          LocalDate.now(clock).dayOfWeek.getDisplayName(TextStyle.FULL, Locale.getDefault()),
         todaySummary = summarize(meals.filter { it.dateIso == today }, "Nothing logged yet."),
         yesterdaySummary = summarize(meals.filter { it.dateIso == yesterday }, "Nothing logged."),
-        weekSummary = weekSummary(meals, fmt),
+        weekSummary = weekSummary(meals),
         weightTrend = weightRepository.trendSummary()
       )
     }
 
-  private fun summarize(meals: List<MealEntity>, empty: String): String {
+  private fun summarize(meals: List<Meal>, empty: String): String {
     if (meals.isEmpty()) return empty
     val protein = meals.sumOf { it.proteinGrams.toDouble() }
     val items =
@@ -274,9 +267,9 @@ class DietitianChatViewModel(app: Application) : AndroidViewModel(app) {
     return "${meals.sumOf { it.calories }} kcal, ${"%.0f".format(protein)} g protein. $items"
   }
 
-  private fun weekSummary(meals: List<MealEntity>, fmt: SimpleDateFormat): String =
-    (6 downTo 0).joinToString("\n") { daysAgo ->
-      val day = fmt.format(Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -daysAgo) }.time)
+  private fun weekSummary(meals: List<Meal>): String =
+    (WEEK_DAYS - 1 downTo 0).joinToString("\n") { daysAgo ->
+      val day = clock.daysAgoIso(daysAgo.toLong())
       val dayMeals = meals.filter { it.dateIso == day }
       if (dayMeals.isEmpty()) {
         "$day: nothing logged"
@@ -286,24 +279,9 @@ class DietitianChatViewModel(app: Application) : AndroidViewModel(app) {
       }
     }
 
-  private fun apiKeyFor(p: UserProfile, t: AiProviderType) =
-    when (t) {
-      AiProviderType.OPENAI -> p.openAiApiKey
-      AiProviderType.CLAUDE -> p.claudeApiKey
-      AiProviderType.DEEPSEEK -> p.deepSeekApiKey
-      AiProviderType.GEMINI -> p.geminiApiKey
-    }.trim()
-
-  private fun modelFor(p: UserProfile, t: AiProviderType) =
-    when (t) {
-      AiProviderType.OPENAI -> p.openAiModel
-      AiProviderType.CLAUDE -> p.claudeModel
-      AiProviderType.DEEPSEEK -> p.deepSeekModel
-      AiProviderType.GEMINI -> p.geminiModel
-    }.trim()
-
   private companion object {
     const val MAX_HISTORY = 24
     const val MAX_IMAGES_IN_HISTORY = 2
+    const val WEEK_DAYS = 7
   }
 }

@@ -18,20 +18,20 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.calorietracker.app.data.model.DailySummary
-import com.calorietracker.app.data.model.MealEntry
+import com.calorietracker.app.domain.model.DailyNutritionSummary
+import com.calorietracker.app.domain.model.Meal
 import com.calorietracker.app.ui.components.DayDetailsDialog
 import com.calorietracker.app.ui.theme.*
 
 @Composable
 fun AnalyticsScreen(
-  weeklySummaries: List<DailySummary>,
-  allMeals: List<MealEntry> = emptyList(),
+  weeklySummaries: List<DailyNutritionSummary>,
+  allMeals: List<Meal> = emptyList(),
   targetCalories: Int = 2000,
   maintenanceCalories: Int = 2400
 ) {
   var selectedTab by remember { mutableIntStateOf(0) } // 0 = Week, 1 = Month
-  var selectedSummaryForDialog by remember { mutableStateOf<DailySummary?>(null) }
+  var selectedSummaryForDialog by remember { mutableStateOf<DailyNutritionSummary?>(null) }
 
   // Day Details Dialog popup
   selectedSummaryForDialog?.let { summary ->
@@ -259,11 +259,15 @@ fun AnalyticsScreen(
           Column(horizontalAlignment = Alignment.End) {
             Text(
               text = "${summary.totalCalories} / ${summary.targetCalories} kcal",
-              color = if (summary.totalCalories <= summary.targetCalories) AccentEmerald else AccentOrange,
+              color =
+                if (summary.totalCalories <= summary.targetCalories) AccentEmerald
+                else AccentOrange,
               fontSize = 14.sp,
               fontWeight = FontWeight.Bold
             )
-            val status = if (summary.totalCalories <= summary.targetCalories) "Within target" else "Over target"
+            val status =
+              if (summary.totalCalories <= summary.targetCalories) "Within target"
+              else "Over target"
             Text(text = status, color = TextSecondary, fontSize = 11.sp)
           }
         }

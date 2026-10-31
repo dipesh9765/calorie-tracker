@@ -5,16 +5,19 @@ import com.calorietracker.app.data.local.WeightEntity
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlin.math.abs
 
-class WeightRepository(private val dao: WeightDao) {
+@Singleton
+class WeightRepository @Inject constructor(private val dao: WeightDao) {
 
   fun observeAll() = dao.observeAll()
 
   /** Logs [weightKg] unless it equals the latest reading. Returns true if a row was added. */
   suspend fun logIfChanged(weightKg: Float): Boolean {
     val last = dao.latest(1).firstOrNull()
-    if (last != null && abs(last.weightKg - weightKg) < 0.05f) return false
+    if (last != null && abs(last.weightKg - weightKg) < SAME_WEIGHT_TOLERANCE_KG) return false
     val now = System.currentTimeMillis()
     dao.insert(
       WeightEntity(
@@ -26,15 +29,20 @@ class WeightRepository(private val dao: WeightDao) {
     return true
   }
 
-  suspend fun trendSummary(): String = describeTrend(dao.latest(30))
+  suspend fun trendSummary(): String = describeTrend(dao.latest(TREND_WINDOW_READINGS))
 
   companion object {
+    /** Readings closer than this are the same weigh-in. */
+    private const val SAME_WEIGHT_TOLERANCE_KG = 0.05f
+    private const val TREND_WINDOW_READINGS = 30
+
     /** [readings] newest first. One line the dietitian can use. */
     fun describeTrend(readings: List<WeightEntity>): String {
       if (readings.isEmpty()) return "No weigh-ins logged."
       val newest = readings.first()
       val oldest = readings.last()
-      if (readings.size == 1) return "${"%.1f".format(newest.weightKg)} kg on ${newest.dateIso} (only reading)."
+      if (readings.size == 1)
+        return "${"%.1f".format(newest.weightKg)} kg on ${newest.dateIso} (only reading)."
       val delta = newest.weightKg - oldest.weightKg
       val sign = if (delta > 0) "+" else ""
       return "${"%.1f".format(newest.weightKg)} kg on ${newest.dateIso}; " +

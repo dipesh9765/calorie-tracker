@@ -7,10 +7,7 @@ import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
 
 /** Concrete adapter implementation for OpenAI Chat Completions API (`gpt-4o-mini`). */
 class OpenAiAdapter(
@@ -20,7 +17,8 @@ class OpenAiAdapter(
       .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
       .writeTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
       .build(),
-  private val gson: Gson = Gson()
+  private val gson: Gson = Gson(),
+  private val baseUrl: String = "https://api.openai.com"
 ) : IAiProviderAdapter {
 
   override suspend fun parseMeal(
@@ -30,75 +28,11 @@ class OpenAiAdapter(
     modelName: String
   ): String =
     withContext(Dispatchers.IO) {
-      val cleanKey = apiKey.trim()
-      if (cleanKey.isBlank()) {
-        throw IllegalArgumentException(
-          "OpenAI API Key is blank. Please enter your API key in Profile settings."
-        )
-      }
-
-      val selectedModel = modelName.trim().ifBlank { "gpt-4o-mini" }
-      val url = "https://api.openai.com/v1/chat/completions"
-
-      // Build strict JSON schema format for OpenAI
-      val jsonSchemaFormat =
-        JsonObject().apply {
-          addProperty("type", "json_schema")
-          add(
-            "json_schema",
-            JsonObject().apply {
-              addProperty("name", "meal_response")
-              addProperty("strict", true)
-              add(
-                "schema",
-                JsonObject().apply {
-                  addProperty("type", "object")
-                  add(
-                    "properties",
-                    JsonObject().apply {
-                      add("action", JsonObject().apply { addProperty("type", "string") })
-                      add("targetDateIso", JsonObject().apply { addProperty("type", "string") })
-                      add("foodName", JsonObject().apply { addProperty("type", "string") })
-                      add(
-                        "portionDescription",
-                        JsonObject().apply { addProperty("type", "string") }
-                      )
-                      add("calories", JsonObject().apply { addProperty("type", "integer") })
-                      add("proteinGrams", JsonObject().apply { addProperty("type", "number") })
-                      add("carbsGrams", JsonObject().apply { addProperty("type", "number") })
-                      add("fatGrams", JsonObject().apply { addProperty("type", "number") })
-                      add("mealCategory", JsonObject().apply { addProperty("type", "string") })
-                      add("advice", JsonObject().apply { addProperty("type", "string") })
-                    }
-                  )
-                  add(
-                    "required",
-                    gson.toJsonTree(
-                      listOf(
-                        "action",
-                        "targetDateIso",
-                        "foodName",
-                        "portionDescription",
-                        "calories",
-                        "proteinGrams",
-                        "carbsGrams",
-                        "fatGrams",
-                        "mealCategory",
-                        "advice"
-                      )
-                    )
-                  )
-                  addProperty("additionalProperties", false)
-                }
-              )
-            }
-          )
-        }
-
+      val key = requireKey(apiKey, PROVIDER)
       val payload =
         JsonObject().apply {
-          addProperty("model", selectedModel)
-          add("response_format", jsonSchemaFormat)
+          addProperty("model", modelName.trim().ifBlank { DEFAULT_MODEL })
+          add("response_format", RESPONSE_FORMAT)
           add(
             "messages",
             gson.toJsonTree(
@@ -109,49 +43,15 @@ class OpenAiAdapter(
             )
           )
         }
-
-      val request =
-        Request.Builder()
-          .url(url)
-          .header("Authorization", "Bearer $cleanKey")
-          .post(payload.toString().toRequestBody("application/json".toMediaType()))
-          .build()
-
-      client.newCall(request).execute().use { response ->
-        val responseBody = response.body?.string() ?: ""
-
-        if (!response.isSuccessful) {
-          val errorDetails =
-            try {
-              val errObj = gson.fromJson(responseBody, JsonObject::class.java)
-              val errObjDetail = errObj.getAsJsonObject("error")
-              errObjDetail?.get("message")?.asString ?: responseBody
-            } catch (_: Exception) {
-              responseBody.ifBlank { "HTTP ${response.code} ${response.message}" }
-            }
-          throw Exception("OpenAI API Error (${response.code}): $errorDetails")
-        }
-
-        if (responseBody.isBlank()) {
-          throw Exception("Empty response received from OpenAI API.")
-        }
-
-        val resObj = gson.fromJson(responseBody, JsonObject::class.java)
-        val choices =
-          resObj.getAsJsonArray("choices")
-            ?: throw Exception("Invalid OpenAI response structure: missing 'choices' array.")
-
-        if (choices.size() == 0) {
-          throw Exception("OpenAI returned zero choices.")
-        }
-
-        return@withContext choices
-          .get(0)
-          .asJsonObject
-          .getAsJsonObject("message")
-          .get("content")
-          .asString
-      }
+      client
+        .postJson(
+          "$baseUrl/v1/chat/completions",
+          mapOf("Authorization" to "Bearer $key"),
+          payload,
+          PROVIDER,
+          gson
+        )
+        .firstChoiceContent(PROVIDER)
     }
 
   override suspend fun chat(
@@ -180,7 +80,12 @@ class OpenAiAdapter(
               add(
                 "content",
                 JsonArray().apply {
-                  add(JsonObject().apply { addProperty("type", "text"); addProperty("text", turn.text) })
+                  add(
+                    JsonObject().apply {
+                      addProperty("type", "text")
+                      addProperty("text", turn.text)
+                    }
+                  )
                   add(
                     JsonObject().apply {
                       addProperty("type", "image_url")
@@ -206,7 +111,7 @@ class OpenAiAdapter(
         }
       val res =
         client.postJson(
-          "https://api.openai.com/v1/chat/completions",
+          "$baseUrl/v1/chat/completions",
           mapOf("Authorization" to "Bearer $key"),
           payload,
           "OpenAI",
@@ -218,6 +123,12 @@ class OpenAiAdapter(
         ?.asJsonObject
         ?.getAsJsonObject("message")
         ?.get("content")
-        ?.asString ?: throw Exception("OpenAI returned no content.")
+        ?.asString ?: throw ProviderResponseException("OpenAI returned no content.")
     }
+
+  private companion object {
+    const val PROVIDER = "OpenAI"
+    const val DEFAULT_MODEL = "gpt-4o-mini"
+    val RESPONSE_FORMAT = MealResponseSchema.forOpenAi()
+  }
 }

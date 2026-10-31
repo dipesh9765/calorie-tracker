@@ -18,8 +18,7 @@ data class WeightEntity(
 
 @Dao
 interface WeightDao {
-  @Query("SELECT * FROM weights ORDER BY timestamp DESC")
-  fun observeAll(): Flow<List<WeightEntity>>
+  @Query("SELECT * FROM weights ORDER BY timestamp DESC") fun observeAll(): Flow<List<WeightEntity>>
 
   @Query("SELECT * FROM weights ORDER BY timestamp DESC LIMIT :limit")
   suspend fun latest(limit: Int): List<WeightEntity>

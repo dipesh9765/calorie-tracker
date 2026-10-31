@@ -147,7 +147,8 @@ class DietitianChatTest {
   @Test
   fun `UPDATE without id is stored as a new memory instead of being lost`() = runBlocking {
     val dao = FakeMemoryDao()
-    MemoryRepository(dao).apply(listOf(MemoryUpdate(MemoryOp.UPDATE, null, "Habit", "No sugar in tea")))
+    MemoryRepository(dao)
+      .apply(listOf(MemoryUpdate(MemoryOp.UPDATE, null, "Habit", "No sugar in tea")))
     assertEquals(1, dao.rows.size)
   }
 
@@ -155,8 +156,7 @@ class DietitianChatTest {
 
   @Test
   fun `prompt contains memories with ids profile and log`() {
-    val memories =
-      listOf(MemoryEntity(7, "Supplement", "Nakpro whey, 33 g scoop", 0, 0))
+    val memories = listOf(MemoryEntity(7, "Supplement", "Nakpro whey, 33 g scoop", 0, 0))
     val prompt =
       DietitianPrompt.build(
         DietitianContext(

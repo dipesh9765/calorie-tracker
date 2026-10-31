@@ -13,6 +13,11 @@ interface MealDao {
   @Query("SELECT * FROM meals ORDER BY dateIso DESC, timestamp DESC")
   fun getAllMeals(): Flow<List<MealEntity>>
 
+  @Query(
+    "SELECT * FROM meals WHERE dateIso = :dateIso AND foodName = :foodName COLLATE NOCASE LIMIT 1"
+  )
+  suspend fun findByDateAndName(dateIso: String, foodName: String): MealEntity?
+
   @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insertMeal(meal: MealEntity)
 
   @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insertAll(meals: List<MealEntity>)
